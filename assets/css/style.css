@@ -305,4 +305,17 @@ textarea {
     .form-card {
         width: 100%;
     }
+
+    .add-btn {
+        display: inline-block;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .btn.danger {
+        background: #e53935;
+        color: white;
+    }
+    
+    
 }

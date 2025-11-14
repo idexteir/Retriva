@@ -4,10 +4,20 @@ import { supabase } from "./config.js";
 async function renderHeader() {
     const header = document.getElementById("app-header");
 
-    const { data } = await supabase.auth.getSession();
-    const user = data?.session?.user;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
 
-    let role = user?.app_metadata?.role || "user";
+    let role = "user";
+
+    if (user) {
+        const { data: profile } = await supabase
+            .from("users")
+            .select("role")
+            .eq("id", user.id)
+            .single();
+
+        role = profile?.role || "user";
+    }
 
     header.innerHTML = `
         <nav class="navbar">

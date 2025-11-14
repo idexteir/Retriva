@@ -45,9 +45,14 @@ async function loadListings() {
                 <td>${listing.title}</td>
                 <td>${listing.type}</td>
                 <td>${listing.status}</td>
-                <td>
-                    <a href="listing.html?id=${listing.id}" class="btn small">View</a>
-                </td>
+window.deleteListing = async (id) => {
+    if (!confirm("Delete this listing?")) return;
+
+    await supabase.from("listings").delete().eq("id", id);
+
+    location.reload();
+};
+
             </tr>
         `;
     });
