@@ -1,12 +1,30 @@
 // js/admin.js
 import { supabase } from "./config.js";
+import { ensureProfile } from "./auth.js";
 
+// ---------------------------------------------------------
+// ENSURE ADMIN IS LOGGED IN + PROFILE EXISTS
+// ---------------------------------------------------------
+async function initAdmin() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session) {
+        window.location.href = "login.html";
+        return;
+    }
+
+    const user = session.user;
+    await ensureProfile(user); // ensure entry in users table
+}
+
+await initAdmin();
 
 // ---------------------------------------------------------
 // LOAD ALL USERS
 // ---------------------------------------------------------
 async function loadUsers() {
-    const { data, error } = await supabase
+    const { data: users, error } = await supabase
         .from("users")
         .select("*")
         .order("created_at", { ascending: false });
@@ -20,7 +38,7 @@ async function loadUsers() {
         return;
     }
 
-    data.forEach(u => {
+    users.forEach(u => {
         tbody.innerHTML += `
             <tr>
                 <td>${u.email}</td>
@@ -36,7 +54,6 @@ async function loadUsers() {
         `;
     });
 }
-
 
 // ---------------------------------------------------------
 // CHANGE USER ROLE
@@ -54,23 +71,23 @@ window.changeUserRole = async (id, newRole) => {
         alert("Error updating role.");
         console.error(error);
     } else {
-        alert("Role updated.");
+        alert("Role updated successfully.");
+        loadUsers();
     }
 };
 
-
 // ---------------------------------------------------------
-// LOAD ALL LISTINGS (with owner's email)
+// LOAD ALL LISTINGS WITH OWNER EMAIL (via foreign key)
 // ---------------------------------------------------------
 async function loadListings() {
-    const { data, error } = await supabase
+    const { data: listings, error } = await supabase
         .from("listings")
         .select(`
             id,
             title,
             status,
             posted_by,
-            users ( email )
+            users:users ( email )
         `)
         .order("created_at", { ascending: false });
 
@@ -83,7 +100,7 @@ async function loadListings() {
         return;
     }
 
-    data.forEach(l => {
+    listings.forEach(l => {
         tbody.innerHTML += `
             <tr>
                 <td>${l.title}</td>
@@ -99,15 +116,14 @@ async function loadListings() {
     });
 }
 
-
 // ---------------------------------------------------------
-// ADMIN DELETE ANY LISTING (DB + Storage)
+// ADMIN DELETE LISTING (DB + STORAGE)
 // ---------------------------------------------------------
 window.adminDeleteListing = async (id) => {
-    const ok = confirm("Admin: permanently delete this listing?");
+    const ok = confirm("Admin: permanently DELETE this listing?");
     if (!ok) return;
 
-    // delete storage images first
+    // 1) Delete images from storage
     const { data: files } = await supabase.storage
         .from("listing-images")
         .list(id);
@@ -117,24 +133,24 @@ window.adminDeleteListing = async (id) => {
         await supabase.storage.from("listing-images").remove(paths);
     }
 
-    // delete image records
+    // 2) Delete image rows
     await supabase
         .from("listing_images")
         .delete()
         .eq("listing_id", id);
 
-    // delete listing
+    // 3) Delete the listing
     await supabase
         .from("listings")
         .delete()
         .eq("id", id);
 
+    alert("Listing deleted.");
     loadListings();
 };
 
-
 // ---------------------------------------------------------
-// INIT
+// INIT PAGE LOAD
 // ---------------------------------------------------------
 loadUsers();
 loadListings();
