@@ -1,8 +1,12 @@
+// admin.js — FINAL RESTORED VERSION
 import { supabase } from "./config.js";
 import { ensureProfile } from "./auth.js";
 
 let CURRENT_ROLE = "user";
 
+/**
+ * Check if user is admin or manager before entering admin page
+ */
 async function requireAdminOrManager() {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
@@ -12,9 +16,11 @@ async function requireAdminOrManager() {
         return;
     }
 
-    const user = session.user;
+    const authUser = session.user;
 
-    const profile = await ensureProfile(user);
+    // Ensure profile exists
+    const profile = await ensureProfile(authUser);
+
     if (!profile) {
         alert("Profile not found.");
         window.location.href = "login.html";
@@ -23,6 +29,7 @@ async function requireAdminOrManager() {
 
     CURRENT_ROLE = profile.role;
 
+    // USER cannot enter admin page
     if (profile.role === "user") {
         alert("Access denied.");
         window.location.href = "index.html";
@@ -30,23 +37,30 @@ async function requireAdminOrManager() {
     }
 }
 
+/**
+ * Load all users (ADMIN ONLY)
+ */
 async function loadUsers() {
+    const tbody = document.getElementById("admin-users");
+    tbody.innerHTML = `<tr><td colspan="3">Loading...</td></tr>`;
+
     const { data, error } = await supabase
         .from("users")
         .select("*")
         .order("created_at", { ascending: true });
 
-    const tbody = document.getElementById("admin-users");
-    tbody.innerHTML = "";
-
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="4">Error loading users</td></tr>`;
+        console.error(error);
+        tbody.innerHTML = `<tr><td colspan="3">Error loading users</td></tr>`;
         return;
     }
+
+    tbody.innerHTML = "";
 
     data.forEach((u) => {
         let roleControl = "";
 
+        // Admin can change roles
         if (CURRENT_ROLE === "admin") {
             roleControl = `
                 <select onchange="updateUserRole('${u.id}', this.value)">
@@ -55,7 +69,9 @@ async function loadUsers() {
                     <option value="admin" ${u.role === "admin" ? "selected" : ""}>Admin</option>
                 </select>
             `;
-        } else {
+        }
+        // Manager can only see roles
+        else {
             roleControl = `<span>${u.role}</span>`;
         }
 
@@ -69,6 +85,9 @@ async function loadUsers() {
     });
 }
 
+/**
+ * Update user role (ADMIN ONLY)
+ */
 async function updateUserRole(userId, newRole) {
     const { error } = await supabase
         .from("users")
@@ -85,27 +104,31 @@ async function updateUserRole(userId, newRole) {
     loadUsers();
 }
 
+/**
+ * Load all listings (ADMIN + MANAGER)
+ */
 async function loadListings() {
+    const tbody = document.getElementById("admin-listings");
+    tbody.innerHTML = `<tr><td colspan="3">Loading...</td></tr>`;
+
     const { data, error } = await supabase
         .from("listings")
         .select(`
             id,
             title,
-            type,
             status,
             posted_by,
             users ( email )
         `)
         .order("created_at", { ascending: false });
 
-    const tbody = document.getElementById("admin-listings");
-    tbody.innerHTML = "";
-
     if (error) {
         console.error(error);
-        tbody.innerHTML = `<tr><td colspan="4">Error loading listings</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="3">Error loading listings</td></tr>`;
         return;
     }
+
+    tbody.innerHTML = "";
 
     data.forEach((l) => {
         const ownerEmail = l.users?.email ?? "Unknown";
@@ -120,8 +143,10 @@ async function loadListings() {
     });
 }
 
+// Expose role update function to window
 window.updateUserRole = updateUserRole;
 
+// Initialize admin page
 (async () => {
     await requireAdminOrManager();
     await loadUsers();
