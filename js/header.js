@@ -1,49 +1,26 @@
-// js/header.js
 import { supabase } from "./config.js";
 
-async function renderHeader() {
-    const header = document.getElementById("app-header");
+export async function renderHeader() {
+    const emailEl = document.getElementById("header-user-email");
+    const logoutBtn = document.getElementById("logout-btn");
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user;
+    // If page does not have a header → avoid crashing
+    if (!emailEl || !logoutBtn) return;
 
-    let role = "user";
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
 
     if (user) {
-        const { data: profile } = await supabase
-            .from("users")
-            .select("role")
-            .eq("id", user.id)
-            .single();
+        emailEl.textContent = user.email;
+        logoutBtn.style.display = "inline-block";
 
-        role = profile?.role || "user";
-    }
-
-    header.innerHTML = `
-        <nav class="navbar">
-            <div class="nav-left">
-                <a class="logo" href="index.html">Retriva</a>
-                <a href="index.html">Home</a>
-                <a href="dashboard.html">Dashboard</a>
-                ${role === "admin" ? `<a href="admin.html">Admin</a>` : ""}
-            </div>
-            <div class="nav-right">
-                ${user ? `
-                    <span class="user-email">${user.email}</span>
-                    <button id="logout-btn" class="btn small">Logout</button>
-                ` : `
-                    <a href="login.html" class="btn small">Login</a>
-                `}
-            </div>
-        </nav>
-    `;
-
-    const logoutBtn = document.getElementById("logout-btn");
-    if (logoutBtn) {
         logoutBtn.onclick = async () => {
             await supabase.auth.signOut();
             window.location.href = "login.html";
         };
+    } else {
+        emailEl.textContent = "";
+        logoutBtn.style.display = "none";
     }
 }
 

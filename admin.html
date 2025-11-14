@@ -2,55 +2,102 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Retriva</title>
+
+    <!-- Global CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/loading.css">
+
+    <style>
+        body {
+            background: #fafafa;
+            padding: 30px;
+            font-family: Arial, sans-serif;
+        }
+
+        h2 {
+            margin-top: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+        }
+
+        th {
+            background: #eef4ff;
+            text-align: left;
+            padding: 10px;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        select {
+            padding: 5px 10px;
+        }
+
+        .section-title {
+            font-size: 22px;
+            margin-top: 40px;
+        }
+    </style>
 </head>
+
 <body>
 
-<!-- Header (navigation bar) -->
-<header id="site-header"></header>
-<script src="js/header.js" type="module"></script>
+<!-- HEADER -->
+<div id="header">
+    <a href="index.html" id="brand">Retriva</a>
 
-<main class="container" style="margin-top: 40px;">
-    <h2>Admin Panel</h2>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="admin.html">Admin</a>
+        <span id="header-user-email"></span>
+        <button id="logout-btn">Logout</button>
+    </nav>
+</div>
 
-    <!-- USERS SECTION -->
-    <h3>Users</h3>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody id="admin-users">
-            <tr><td colspan="3">Loading...</td></tr>
-        </tbody>
-    </table>
+<h1>Admin Panel</h1>
 
-    <!-- LISTINGS SECTION -->
-    <h3 style="margin-top: 40px;">Listings</h3>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Owner</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody id="admin-listings">
-            <tr><td colspan="3">Loading...</td></tr>
-        </tbody>
-    </table>
+<h2>Users</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody id="admin-users">
+        <tr><td colspan="3">Loading...</td></tr>
+    </tbody>
+</table>
 
-</main>
 
-<!-- JavaScript Files -->
-<script src="js/config.js" type="module"></script>
-<script src="js/auth.js" type="module"></script>
-<script src="js/admin.js" type="module"></script>
+<h2>Listings</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Owner</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody id="admin-listings">
+        <tr><td colspan="3">Loading...</td></tr>
+    </tbody>
+</table>
+
+<!-- JS -->
+<script type="module" src="js/header.js"></script>
+<script type="module" src="js/admin.js"></script>
 
 </body>
 </html>
