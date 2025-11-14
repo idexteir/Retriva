@@ -5,75 +5,124 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Retriva</title>
 
-    <link rel="stylesheet" href="assets/css/style.css" />
-    <link rel="stylesheet" href="assets/css/loading.css" />
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/loading.css">
 
     <style>
-        body {
-            background: #fafafa;
-            padding: 30px;
+        .admin-section-title {
+            font-size: 24px;
+            margin: 30px 0 10px;
         }
-
-        h1 { margin-bottom: 25px; }
-        h2 { margin-top: 40px; }
-
         table {
             width: 100%;
             background: white;
             border-collapse: collapse;
-            margin-top: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 30px;
         }
         th {
-            padding: 10px;
-            background: #eaf1fb;
-            color: #1a73e8;
+            background: #eaf1ff;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
         }
         td {
-            padding: 10px;
+            padding: 12px;
             border-bottom: 1px solid #eee;
+            vertical-align: middle;
         }
-        select {
-            padding: 6px;
+        .action-btn {
+            cursor: pointer;
+            margin-right: 10px;
+            color: #1a73e8;
+            font-weight: bold;
         }
-        .btn.small { font-size: 13px; padding: 6px 12px; }
+        .delete-btn {
+            color: red;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 45px;
+            height: 22px;
+            display: inline-block;
+        }
+        .toggle-switch input {
+            display: none;
+        }
+        .slider {
+            position: absolute;
+            background: #ccc;
+            border-radius: 22px;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            transition: 0.3s;
+        }
+        .slider:before {
+            content: "";
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: 0.3s;
+        }
+        input:checked + .slider {
+            background: #1a73e8;
+        }
+        input:checked + .slider:before {
+            transform: translateX(23px);
+        }
     </style>
 </head>
-
 <body>
 
 <div id="app-header"></div>
 
-<h1>Admin Panel</h1>
+<div class="container">
 
-<h2>Users</h2>
-<table>
-    <thead>
-        <tr>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Ban</th>
-            <th>Delete</th>
-        </tr>
-    </thead>
-    <tbody id="admin-users">
-        <tr><td colspan="4">Loading...</td></tr>
-    </tbody>
-</table>
+    <h1 class="page-title">Admin Panel</h1>
 
-<h2>Listings</h2>
-<table>
-    <thead>
-        <tr>
-            <th>Title</th>
-            <th>Owner</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody id="admin-listings">
-        <tr><td colspan="4">Loading...</td></tr>
-    </tbody>
-</table>
+    <!-- USERS -->
+    <h2 class="admin-section-title">Users</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Ban</th>
+                <th>Delete</th>
+            </tr>
+        </thead>
+        <tbody id="admin-users">
+            <tr><td colspan="4">Loading...</td></tr>
+        </tbody>
+    </table>
+
+
+    <!-- LISTINGS -->
+    <h2 class="admin-section-title">Listings</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Owner</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="admin-listings">
+            <tr><td colspan="4">Loading...</td></tr>
+        </tbody>
+    </table>
+
+</div>
 
 <script type="module" src="js/header.js"></script>
 <script type="module" src="js/admin.js"></script>
