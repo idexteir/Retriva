@@ -1,33 +1,25 @@
-// auth.js — FINAL FIXED VERSION
+// auth.js — FINAL VERSION WITH BAN CHECK
 
 import { supabase } from "./config.js";
 
-/**
- * Ensures the user has a corresponding row in the "users" table.
- * Safe for OAuth (Google), repeated logins, and RLS.
- */
 export async function ensureProfile(authUser) {
     if (!authUser) return null;
 
     const userId = authUser.id;
     const userEmail = authUser.email;
 
-    // STEP 1 — Try to load existing profile
     let { data: profile, error: selectError } = await supabase
         .from("users")
         .select("*")
         .eq("id", userId)
         .maybeSingle();
 
-    // If profile exists, return it
     if (profile) return profile;
 
-    // If select error is something else, log it (but continue)
     if (selectError) {
         console.warn("ensureProfile: select error →", selectError);
     }
 
-    // STEP 2 — Insert missing profile (safe under RLS)
     const { data: insertData, error: insertError } = await supabase
         .from("users")
         .insert({
@@ -41,14 +33,10 @@ export async function ensureProfile(authUser) {
         .select()
         .maybeSingle();
 
-    // If insert succeeded
     if (insertData) return insertData;
 
-    // If insert failed due to conflict or RLS conflict — try or return null
     if (insertError) {
         console.error("ensureProfile: insert error →", insertError);
-
-        // Try one more SELECT
         const { data: retryProfile } = await supabase
             .from("users")
             .select("*")
@@ -56,17 +44,32 @@ export async function ensureProfile(authUser) {
             .maybeSingle();
 
         if (retryProfile) return retryProfile;
-
-        // Still nothing — return null (admin.js will redirect)
         return null;
     }
 
     return null;
 }
 
-/**
- * Logout helper
- */
+// 🔥 NEW — CHECK BAN STATUS
+export async function checkBanStatus(userId) {
+    const { data, error } = await supabase
+        .from("users")
+        .select("banned_until")
+        .eq("id", userId)
+        .maybeSingle();
+
+    if (error) {
+        console.error("checkBanStatus error:", error);
+        return;
+    }
+
+    if (data?.banned_until && new Date(data.banned_until) > new Date()) {
+        alert("Your account has been banned.");
+        await supabase.auth.signOut();
+        window.location.href = "login.html";
+    }
+}
+
 export async function logout() {
     await supabase.auth.signOut();
     window.location.href = "login.html";

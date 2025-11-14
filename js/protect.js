@@ -1,14 +1,24 @@
-// FULL FILE — protect.js
+// protect.js — FINAL VERSION WITH BAN ENFORCEMENT
+
 import { supabase } from "./config.js";
+import { checkBanStatus } from "./auth.js";
 
 export async function requireLogin() {
     const { data: session } = await supabase.auth.getSession();
-    if (!session.session) window.location.href = "login.html";
+    if (!session.session) {
+        window.location.href = "login.html";
+        return;
+    }
+
+    // 🔥 Auto logout if banned
+    await checkBanStatus(session.session.user.id);
 }
 
 export async function requireManager() {
     const { data: session } = await supabase.auth.getSession();
     if (!session.session) window.location.href = "login.html";
+
+    await checkBanStatus(session.session.user.id); // 🔥 enforce ban
 
     const { data } = await supabase.from("users")
         .select("role")
@@ -24,6 +34,8 @@ export async function requireManager() {
 export async function requireAdmin() {
     const { data: session } = await supabase.auth.getSession();
     if (!session.session) window.location.href = "login.html";
+
+    await checkBanStatus(session.session.user.id); // 🔥 enforce ban
 
     const { data } = await supabase.from("users")
         .select("role")

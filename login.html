@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta-name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login • Retriva</title>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
@@ -13,19 +13,26 @@
     <h1 class="logo">Retriva</h1>
     <p class="subtitle">Sign in to continue</p>
 
+    <!-- Google Login Button -->
     <button id="google-btn" class="btn google-btn">
         <img src="assets/img/google.png" /> Continue with Google
     </button>
 </div>
 
+<!-- OAuth Login Script -->
 <script type="module">
 import { supabase } from "./js/config.js";
 
+// Redirects to post-login.html, which handles:
+// - Creating missing profile
+// - Checking ban status
+// - Redirecting to dashboard
+// - Blocking banned users
 document.getElementById("google-btn").onclick = async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-            redirectTo: window.location.origin + "/Retriva/dashboard.html"
+            redirectTo: window.location.origin + "/Retriva/post-login.html"
         }
     });
 };
