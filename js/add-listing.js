@@ -6,15 +6,24 @@ const form = document.getElementById("addForm");
 form.onsubmit = async (e) => {
     e.preventDefault();
 
+    // Get logged-in user
+    const { data: session } = await supabase.auth.getSession();
+    const user = session?.session?.user;
+
+    if (!user) {
+        alert("You must be logged in.");
+        window.location.href = "login.html";
+        return;
+    }
+
     const title = document.getElementById("title").value;
     const type = document.getElementById("type").value;
     const location = document.getElementById("location").value;
     const desc = document.getElementById("description").value;
+    const files = document.getElementById("images").files;
 
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // Insert listing
-    const { data: listing } = await supabase
+    // Insert listing into DB
+    const { data: listing, error: listError } = await supabase
         .from("listings")
         .insert({
             posted_by: user.id,
@@ -26,26 +35,38 @@ form.onsubmit = async (e) => {
         .select()
         .single();
 
+    if (listError) {
+        console.error(listError);
+        alert("Error adding listing");
+        return;
+    }
+
+    const listingId = listing.id;
+
     // Upload images
-    const files = document.getElementById("images").files;
-
     for (let file of files) {
-        const filename = `${listing.id}/${Date.now()}-${file.name}`;
+        const filename = `${listingId}/${Date.now()}-${file.name}`;
 
-        const { data: upload } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
             .from("listing-images")
             .upload(filename, file);
+
+        if (uploadError) {
+            console.error(uploadError);
+            alert("Upload blocked — fix storage policies.");
+            return;
+        }
 
         const publicURL = supabase.storage
             .from("listing-images")
             .getPublicUrl(filename).data.publicUrl;
 
         await supabase.from("listing_images").insert({
-            listing_id: listing.id,
+            listing_id: listingId,
             image_url: publicURL
         });
     }
 
-    alert("Listing added!");
+    alert("Listing added successfully!");
     window.location.href = "dashboard.html";
 };

@@ -11,102 +11,101 @@
 
 <body>
 
-<header class="header">
-    <h2 data-i18n="dashboard">Dashboard</h2>
+<!-- UNIVERSAL NAVIGATION HEADER (FOR ALL PAGES) -->
+<header class="nav-header">
 
-    <div style="display:flex; gap:10px;">
-        <!-- Language Switch -->
-        <button onclick="setLanguage('en')" class="dashboard-btn">EN</button>
-        <button onclick="setLanguage('ar')" class="dashboard-btn">AR</button>
-
-        <!-- Admin Panel -->
-        <a id="adminBtn" class="dashboard-btn" href="admin.html" style="display:none;" data-i18n="admin_panel">
-            Admin Panel
-        </a>
-
-        <!-- Logout -->
-        <button onclick="logout()" class="dashboard-btn" data-i18n="logout">Logout</button>
+    <div class="nav-left">
+        <a href="index.html" class="nav-logo">Retriva</a>
+        <nav class="nav-links">
+            <a href="index.html" data-i18n="home">Home</a>
+            <a href="add-listing.html" data-i18n="add_listing">Add Listing</a>
+            <a href="dashboard.html" class="active" data-i18n="dashboard">Dashboard</a>
+            <a id="adminNav" href="admin.html" style="display:none;" data-i18n="admin_panel">Admin</a>
+        </nav>
     </div>
+
+    <div class="nav-right">
+        <button class="lang-btn" onclick="setLanguage('en')">EN</button>
+        <button class="lang-btn" onclick="setLanguage('ar')">AR</button>
+        <button class="logout-btn" onclick="logout()" data-i18n="logout">Logout</button>
+    </div>
+
 </header>
+<!-- END HEADER -->
 
 <main>
-    <a class="add-btn" href="add-listing.html" data-i18n="add_listing">+ Add Listing</a>
+    <section class="page-section">
+        <h2 data-i18n="my_listings">My Listings</h2>
 
-    <h3 style="padding: 0 30px;" data-i18n="my_listings">My Listings</h3>
+        <div class="action-bar">
+            <a class="primary-btn" href="add-listing.html" data-i18n="add_listing">+ Add Listing</a>
+        </div>
 
-    <table class="listing-table">
-        <thead>
-            <tr>
-                <th data-i18n="title">Title</th>
-                <th data-i18n="type">Type</th>
-                <th data-i18n="status">Status</th>
-                <th data-i18n="actions">Actions</th>
-            </tr>
-        </thead>
+        <table class="listing-table">
+            <thead>
+                <tr>
+                    <th data-i18n="title">Title</th>
+                    <th data-i18n="type">Type</th>
+                    <th data-i18n="status">Status</th>
+                    <th data-i18n="actions">Actions</th>
+                </tr>
+            </thead>
 
-        <tbody id="dashboard-listings"></tbody>
-    </table>
+            <tbody id="dashboard-listings"></tbody>
+        </table>
+    </section>
 </main>
 
+<!-- PAGE LOGIC -->
 <script type="module">
 
-// --------------------------------------------
-// IMPORTS
-// --------------------------------------------
+/* -----------------------------------------
+   IMPORTS
+------------------------------------------ */
 import { supabase } from "./js/config.js";
 import { requireManager } from "./js/protect.js";
+import { ensureProfile } from "./js/auth.js";
 import { setLanguage, applyLanguage } from "./js/lang.js";
 
-// --------------------------------------------
-// FIX: SUPABASE OAUTH REDIRECT HANDLING
-// --------------------------------------------
+/* -----------------------------------------
+   HANDLE OAUTH CALLBACK (IMPORTANT)
+------------------------------------------ */
 try {
     await supabase.auth.exchangeCodeForSession(window.location.href);
 } catch (e) {
     console.warn("OAuth exchange skipped:", e.message);
 }
 
-// Clean ugly OAuth URL
+// Clean the long OAuth URL
 if (window.location.hash.includes("access_token")) {
     window.history.replaceState({}, document.title, "dashboard.html");
 }
 
-// --------------------------------------------
-// ACCESS PROTECTION
-// --------------------------------------------
-await requireManager();
+/* -----------------------------------------
+   USER PROFILE AUTO-CREATION
+------------------------------------------ */
+const { data: session } = await supabase.auth.getSession();
+const currentUser = session?.session?.user;
 
-// --------------------------------------------
-// DASHBOARD LOGIC
-// --------------------------------------------
-const tbody = document.getElementById("dashboard-listings");
-
-// Check admin role
-async function checkRole() {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session?.session?.user) return;
-
-    const user = session.session.user;
-
-    const { data: profile } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-    if (profile?.role === "admin") {
-        document.getElementById("adminBtn").style.display = "inline-block";
-    }
+if (currentUser) {
+    await ensureProfile(currentUser);  // inserts into users table if missing
 }
 
-await checkRole();
+/* -----------------------------------------
+   PAGE ACCESS CONTROL
+------------------------------------------ */
+await requireManager();
 
-// Load user's listings
+/* -----------------------------------------
+   LOAD LISTINGS FOR THIS USER
+------------------------------------------ */
+const tbody = document.getElementById("dashboard-listings");
+
 async function loadMyListings() {
     const { data: session } = await supabase.auth.getSession();
     const user = session.session.user;
 
-    const { data } = await supabase
+    const { data: listings } = await supabase
         .from("listings")
         .select("id, title, type, status")
         .eq("posted_by", user.id)
@@ -114,7 +113,7 @@ async function loadMyListings() {
 
     tbody.innerHTML = "";
 
-    data.forEach(list => {
+    listings.forEach(list => {
         tbody.innerHTML += `
             <tr>
                 <td>${list.title}</td>
@@ -123,9 +122,10 @@ async function loadMyListings() {
                 <td>
                     <a href="edit-listing.html?id=${list.id}" data-i18n="edit">Edit</a> |
                     <a href="#" onclick="toggleStatus('${list.id}', '${list.status}')">
-                        ${list.status === "active"
-                            ? `<span data-i18n='hide'>Hide</span>`
-                            : `<span data-i18n='unhide'>Unhide</span>`
+                        ${
+                            list.status === "active"
+                            ? `<span data-i18n="hide">Hide</span>`
+                            : `<span data-i18n="unhide">Unhide</span>`
                         }
                     </a> |
                     <a href="#" onclick="deleteListing('${list.id}')" data-i18n="delete">Delete</a>
@@ -137,24 +137,33 @@ async function loadMyListings() {
     applyLanguage();
 }
 
-loadMyListings();
+await loadMyListings();
 
-// --------------------------------------------
-// DELETE LISTING
-// --------------------------------------------
+/* -----------------------------------------
+   CHECK ADMIN ROLE (SHOW ADMIN BUTTON)
+------------------------------------------ */
+async function showAdminButton() {
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session.session.user.id;
+
+    const { data: profile } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", userId)
+        .single();
+
+    if (profile?.role === "admin") {
+        document.getElementById("adminNav").style.display = "inline-block";
+    }
+}
+
+await showAdminButton();
+
+/* -----------------------------------------
+   DELETE LISTING
+------------------------------------------ */
 window.deleteListing = async (id) => {
     if (!confirm("Delete listing?")) return;
-
-    // Remove images from storage
-    const { data: images } = await supabase
-        .from("listing_images")
-        .select("image_url")
-        .eq("listing_id", id);
-
-    for (const img of images) {
-        const filePath = img.image_url.split("listing-images/")[1];
-        await supabase.storage.from("listing-images").remove([filePath]);
-    }
 
     await supabase.from("listing_images").delete().eq("listing_id", id);
     await supabase.from("listings").delete().eq("id", id);
@@ -162,9 +171,9 @@ window.deleteListing = async (id) => {
     loadMyListings();
 };
 
-// --------------------------------------------
-// TOGGLE ACTIVE/HIDDEN STATUS
-// --------------------------------------------
+/* -----------------------------------------
+   TOGGLE ACTIVE/HIDDEN STATUS
+------------------------------------------ */
 window.toggleStatus = async (id, status) => {
     const newStatus = status === "active" ? "hidden" : "active";
 
@@ -176,17 +185,14 @@ window.toggleStatus = async (id, status) => {
     loadMyListings();
 };
 
-// --------------------------------------------
-// LOGOUT
-// --------------------------------------------
+/* -----------------------------------------
+   LOGOUT
+------------------------------------------ */
 window.logout = async () => {
     await supabase.auth.signOut();
     window.location.href = "login.html";
 };
 
-// --------------------------------------------
-// APPLY LANGUAGE
-// --------------------------------------------
 applyLanguage();
 
 </script>

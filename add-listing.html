@@ -1,52 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="add_listing">Add Listing</title>
+    <title>Add Listing</title>
+
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 
 <body>
 
 <header class="header">
-    <h2 data-i18n="add_listing">Add Listing</h2>
-
-    <div style="display:flex; gap:10px;">
-        <button onclick="setLanguage('en')" class="dashboard-btn">EN</button>
-        <button onclick="setLanguage('ar')" class="dashboard-btn">AR</button>
-    </div>
+    <h2>Add Listing</h2>
+    <button onclick="logout()" class="dashboard-btn">Logout</button>
 </header>
 
 <main>
-    <form id="addForm" class="form">
-
-        <label data-i18n="title">Title</label>
+    <form id="addForm" class="form-container">
+        <label>Title</label>
         <input id="title" required>
 
-        <label data-i18n="type">Type</label>
+        <label>Type</label>
         <select id="type" required>
-            <option value="resort" data-i18n="filters_resorts">Resort</option>
-            <option value="apartment" data-i18n="filters_apartments">Apartment</option>
-            <option value="vacation_home" data-i18n="filters_vacation">Vacation Home</option>
+            <option value="resort">Resort</option>
+            <option value="apartment">Apartment</option>
+            <option value="vacation">Vacation Home</option>
         </select>
 
-        <label data-i18n="location">Location</label>
+        <label>Location</label>
         <input id="location" required>
 
-        <label data-i18n="description">Description</label>
-        <textarea id="description"></textarea>
+        <label>Description</label>
+        <textarea id="description" required></textarea>
 
-        <label data-i18n="images">Images</label>
-        <input id="images" type="file" multiple required>
+        <label>Images</label>
+        <input id="images" type="file" accept="image/*" multiple required>
 
-        <button type="submit" data-i18n="add_listing">Add Listing</button>
+        <button class="add-btn" type="submit">Add Listing</button>
     </form>
 </main>
 
+<script type="module">
+import { supabase } from "./js/config.js";
+import { requireManager } from "./js/protect.js";
+
+await requireManager();
+
+window.logout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "login.html";
+};
+
+</script>
+
 <script type="module" src="./js/add-listing.js"></script>
-<script type="module" src="./js/lang.js"></script>
 
 </body>
 </html>
