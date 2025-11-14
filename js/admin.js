@@ -1,11 +1,9 @@
-// js/admin.js
 import { supabase } from "./config.js";
 import { ensureProfile } from "./auth.js";
 
-// ---------------------------------------------------------
-// ENSURE ADMIN IS LOGGED IN + PROFILE EXISTS
-// ---------------------------------------------------------
-async function initAdmin() {
+let CURRENT_ROLE = "user";
+
+async function requireAdminOrManager() {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
 
@@ -15,167 +13,117 @@ async function initAdmin() {
     }
 
     const user = session.user;
-    await ensureProfile(user); // ensure entry in users table
+
+    const profile = await ensureProfile(user);
+    if (!profile) {
+        alert("Profile not found.");
+        window.location.href = "login.html";
+        return;
+    }
+
+    CURRENT_ROLE = profile.role;
+
+    if (profile.role === "user") {
+        alert("Access denied.");
+        window.location.href = "index.html";
+        return;
+    }
 }
 
-await initAdmin();
-
-// ---------------------------------------------------------
-// LOAD ALL USERS
-// ---------------------------------------------------------
 async function loadUsers() {
-    const { data: users, error } = await supabase
+    const { data, error } = await supabase
         .from("users")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: true });
 
     const tbody = document.getElementById("admin-users");
     tbody.innerHTML = "";
 
     if (error) {
-        tbody.innerHTML = "<tr><td colspan='4'>Error loading users</td></tr>";
-        console.error(error);
+        tbody.innerHTML = `<tr><td colspan="4">Error loading users</td></tr>`;
         return;
     }
 
-    users.forEach(u => {
+    data.forEach((u) => {
+        let roleControl = "";
+
+        if (CURRENT_ROLE === "admin") {
+            roleControl = `
+                <select onchange="updateUserRole('${u.id}', this.value)">
+                    <option value="user" ${u.role === "user" ? "selected" : ""}>User</option>
+                    <option value="manager" ${u.role === "manager" ? "selected" : ""}>Manager</option>
+                    <option value="admin" ${u.role === "admin" ? "selected" : ""}>Admin</option>
+                </select>
+            `;
+        } else {
+            roleControl = `<span>${u.role}</span>`;
+        }
+
         tbody.innerHTML += `
             <tr>
                 <td>${u.email}</td>
-                <td>
-                    <select onchange="changeUserRole('${u.id}', this.value)">
-                        <option value="user" ${u.role === "user" ? "selected" : ""}>User</option>
-                        <option value="manager" ${u.role === "manager" ? "selected" : ""}>Manager</option>
-                        <option value="admin" ${u.role === "admin" ? "selected" : ""}>Admin</option>
-                    </select>
-                </td>
+                <td>${roleControl}</td>
                 <td>${u.status}</td>
             </tr>
         `;
     });
 }
 
-// ---------------------------------------------------------
-// CHANGE USER ROLE
-// ---------------------------------------------------------
-window.changeUserRole = async (id, newRole) => {
-    const ok = confirm(`Change this user's role to "${newRole}"?`);
-    if (!ok) return;
-
+async function updateUserRole(userId, newRole) {
     const { error } = await supabase
         .from("users")
         .update({ role: newRole })
-        .eq("id", id);
+        .eq("id", userId);
 
     if (error) {
-        alert("Error updating role.");
         console.error(error);
-    } else {
-        alert("Role updated successfully.");
-        loadUsers();
+        alert("Error updating role.");
+        return;
     }
-};
 
-// ---------------------------------------------------------
-// LOAD ALL LISTINGS WITH OWNER EMAIL (via foreign key)
-// ---------------------------------------------------------
+    alert("Role updated.");
+    loadUsers();
+}
+
 async function loadListings() {
-    const { data: listings, error } = await supabase
+    const { data, error } = await supabase
         .from("listings")
         .select(`
             id,
             title,
+            type,
             status,
             posted_by,
-            users:users!fk_listings_posted_by ( email )
+            users ( email )
         `)
         .order("created_at", { ascending: false });
 
-    // If the FK name is wrong, fallback to the second relationship
-    if (error) {
-        console.warn("Trying fallback relationship because:", error.message);
-
-        const { data: fallback, error: error2 } = await supabase
-            .from("listings")
-            .select(`
-                id,
-                title,
-                status,
-                posted_by,
-                users:users!listings_posted_by_fkey ( email )
-            `)
-            .order("created_at", { ascending: false });
-
-        if (error2) {
-            document.getElementById("admin-listings").innerHTML =
-                "<tr><td colspan='4'>Error loading listings</td></tr>";
-
-            console.error("Both FK joins failed:", error2);
-            return;
-        }
-
-        renderListings(fallback);
-        return;
-    }
-
-    renderListings(listings);
-}
-
-function renderListings(listings) {
     const tbody = document.getElementById("admin-listings");
     tbody.innerHTML = "";
 
-    listings.forEach(l => {
+    if (error) {
+        console.error(error);
+        tbody.innerHTML = `<tr><td colspan="4">Error loading listings</td></tr>`;
+        return;
+    }
+
+    data.forEach((l) => {
+        const ownerEmail = l.users?.email ?? "Unknown";
+
         tbody.innerHTML += `
             <tr>
                 <td>${l.title}</td>
-                <td>${l.users?.email || "Unknown"}</td>
+                <td>${ownerEmail}</td>
                 <td>${l.status}</td>
-                <td>
-                    <button class="btn small danger" onclick="adminDeleteListing('${l.id}')">
-                        Delete
-                    </button>
-                </td>
             </tr>
         `;
     });
 }
 
-// ---------------------------------------------------------
-// ADMIN DELETE LISTING (DB + STORAGE)
-// ---------------------------------------------------------
-window.adminDeleteListing = async (id) => {
-    const ok = confirm("Admin: permanently DELETE this listing?");
-    if (!ok) return;
+window.updateUserRole = updateUserRole;
 
-    // 1) Delete images from storage
-    const { data: files } = await supabase.storage
-        .from("listing-images")
-        .list(id);
-
-    if (files && files.length > 0) {
-        const paths = files.map(f => `${id}/${f.name}`);
-        await supabase.storage.from("listing-images").remove(paths);
-    }
-
-    // 2) Delete image rows
-    await supabase
-        .from("listing_images")
-        .delete()
-        .eq("listing_id", id);
-
-    // 3) Delete the listing
-    await supabase
-        .from("listings")
-        .delete()
-        .eq("id", id);
-
-    alert("Listing deleted.");
-    loadListings();
-};
-
-// ---------------------------------------------------------
-// INIT PAGE LOAD
-// ---------------------------------------------------------
-loadUsers();
-loadListings();
+(async () => {
+    await requireAdminOrManager();
+    await loadUsers();
+    await loadListings();
+})();
