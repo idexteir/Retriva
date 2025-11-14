@@ -2,13 +2,10 @@ import { supabase } from "./config.js";
 import { ensureProfile } from "./auth.js";
 
 let CURRENT_ROLE = "user";
-let CAN_BAN = false;
-let CURRENT_USER_ID = null;
 
-// ------------------------------
-// REQUIRE ADMIN OR MANAGER
-// ------------------------------
-
+/**
+ * Restrict access
+ */
 async function requireAdminOrManager() {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
@@ -19,197 +16,191 @@ async function requireAdminOrManager() {
     }
 
     const user = session.user;
-    CURRENT_USER_ID = user.id;
-
     const profile = await ensureProfile(user);
 
+    if (!profile) {
+        alert("Profile missing");
+        window.location.href = "login.html";
+        return;
+    }
+
     CURRENT_ROLE = profile.role;
-    CAN_BAN = profile.can_ban_users;
 
     if (profile.role === "user") {
         alert("Access denied.");
         window.location.href = "index.html";
+        return;
     }
 }
 
-// ------------------------------
-// USERS TABLE
-// ------------------------------
-
+/**
+ * USERS SECTION
+ */
 async function loadUsers() {
-    const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .order("created_at");
-
     const tbody = document.getElementById("admin-users");
-    tbody.innerHTML = "";
+    tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+
+    const { data, error } = await supabase.from("users").select("*");
 
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="5">Error loading users</td></tr>`;
+        console.error(error);
+        tbody.innerHTML = "<tr><td colspan='4'>Error loading users</td></tr>";
         return;
     }
 
-    data.forEach(u => {
+    tbody.innerHTML = "";
+
+    data.forEach((u) => {
+        // Role dropdown rules
+        let roleControl = "";
         const isAdmin = u.role === "admin";
-        const isSelf = u.id === CURRENT_USER_ID;
 
-        // ----- ROLE SELECT -----
-        let roleHTML = `<span>${u.role}</span>`;
-        if (CURRENT_ROLE === "admin" && !isSelf) {
-            roleHTML = `
-                <select onchange="updateUserRole('${u.id}', this.value)">
-                  <option value="user" ${u.role === "user" ? "selected" : ""}>User</option>
-                  <option value="manager" ${u.role === "manager" ? "selected" : ""}>Manager</option>
-                  <option value="admin" ${u.role === "admin" ? "selected" : ""}>Admin</option>
-                </select>`;
-        }
+        if (CURRENT_ROLE === "admin") {
+            // Admin cannot demote other admins
+            const disabled = isAdmin && u.id !== supabase.auth.getSession()?.session?.user?.id;
 
-        // ----- BAN BUTTONS -----
-        let banButtons = "";
-        if (isSelf || isAdmin) {
-            banButtons = `<span>---</span>`;
-        } else {
-            banButtons = `
-                <button class="btn danger small" onclick="banUser('${u.id}')">Ban</button>
-                ${u.banned_until ? `<button class="btn small" onclick="unbanUser('${u.id}')">Unban</button>` : ""}
+            roleControl = `
+                <select 
+                    onchange="updateUserRole('${u.id}', this.value)"
+                    ${disabled ? "disabled" : ""}
+                >
+                    <option value="user" ${u.role === "user" ? "selected" : ""}>User</option>
+                    <option value="manager" ${u.role === "manager" ? "selected" : ""}>Manager</option>
+                    <option value="admin" ${u.role === "admin" ? "selected" : ""}>Admin</option>
+                </select>
             `;
         }
 
-        // ----- PERMISSION TOGGLE -----
-        let perm = `<span>${u.can_ban_users ? "Yes" : "No"}</span>`;
-        if (CURRENT_ROLE === "admin" && !isAdmin && !isSelf) {
-            perm = `
-              <label class="toggle-label">
-                <input type="checkbox" onchange="toggleBanPermission('${u.id}', this.checked)" 
-                    ${u.can_ban_users ? "checked" : ""}>
-                Can ban users
-              </label>
-            `;
+        if (CURRENT_ROLE === "manager") {
+            if (isAdmin) {
+                roleControl = `<span>admin</span>`;
+            } else {
+                roleControl = `
+                    <select onchange="updateUserRole('${u.id}', this.value)">
+                        <option value="user" ${u.role === "user" ? "selected" : ""}>User</option>
+                        <option value="manager" ${u.role === "manager" ? "selected" : ""}>Manager</option>
+                    </select>
+                `;
+            }
         }
+
+        const canBan = CURRENT_ROLE === "admin" || CURRENT_ROLE === "manager";
+        const toggleClass = u.banned ? "toggle active" : "toggle";
 
         tbody.innerHTML += `
             <tr>
                 <td>${u.email}</td>
-                <td>${roleHTML}</td>
-                <td>${u.banned_until ? "BANNED" : "Active"}</td>
-                <td>${banButtons}</td>
-                <td>${perm}</td>
-            </tr>
-        `;
-    });
-}
-
-// Update Role
-window.updateUserRole = async (userId, newRole) => {
-    const { error } = await supabase
-        .from("users")
-        .update({ role: newRole })
-        .eq("id", userId);
-
-    if (error) {
-        console.error(error);
-        alert("Error updating role");
-        return;
-    }
-    loadUsers();
-};
-
-// Toggle ban permission
-window.toggleBanPermission = async (userId, allowed) => {
-    const { error } = await supabase
-        .from("users")
-        .update({ can_ban_users: allowed })
-        .eq("id", userId);
-
-    if (error) {
-        console.error(error);
-        alert("Failed to update permission");
-        return;
-    }
-    loadUsers();
-};
-
-// Ban user (RPC)
-window.banUser = async userId => {
-    const { error } = await supabase.rpc("ban_user", {
-        target_user: userId,
-    });
-
-    if (error) {
-        console.error(error);
-        alert("Failed to ban user");
-        return;
-    }
-    alert("User banned");
-    loadUsers();
-};
-
-// Unban user (RPC)
-window.unbanUser = async userId => {
-    const { error } = await supabase.rpc("unban_user", {
-        target_user: userId,
-    });
-
-    if (error) {
-        console.error(error);
-        alert("Failed to unban user");
-        return;
-    }
-    alert("User unbanned");
-    loadUsers();
-};
-
-// ------------------------------
-// LISTINGS TABLE
-// ------------------------------
-
-async function loadListings() {
-    const { data, error } = await supabase
-        .from("listings")
-        .select(`
-            id,
-            title,
-            type,
-            status,
-            posted_by,
-            listing_images(image_url),
-            users(email)
-        `)
-        .order("created_at", { ascending: false });
-
-    const tbody = document.getElementById("admin-listings");
-    tbody.innerHTML = "";
-
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="5">Error loading listings</td></tr>`;
-        return;
-    }
-
-    data.forEach(l => {
-        const thumb = l.listing_images?.[0]?.image_url || "assets/img/no-image.png";
-
-        tbody.innerHTML += `
-            <tr>
-                <td><img src="${thumb}" class="thumb" /></td>
-                <td>${l.title}</td>
-                <td>${l.users?.email ?? "Unknown"}</td>
-                <td>${l.status}</td>
-                <td class="action-cell">
-                    <button class="btn small warning" onclick="toggleListingStatus('${l.id}', '${l.status}')">
-                        ${l.status === "active" ? "Hide" : "Unhide"}
-                    </button>
-                    <button class="btn small danger" onclick="deleteListing('${l.id}')">
-                        Delete
-                    </button>
+                <td>${roleControl}</td>
+                <td>
+                    ${
+                        canBan && !isAdmin
+                            ? `<div class="${toggleClass}" onclick="toggleBan('${u.id}', ${u.banned})">
+                                    <div class="toggle-circle"></div>
+                               </div>`
+                            : "-"
+                    }
+                </td>
+                <td>
+                    ${
+                        (!isAdmin && (CURRENT_ROLE === "admin" || CURRENT_ROLE === "manager"))
+                            ? `<button class="btn danger small" onclick="deleteUser('${u.id}')">Delete</button>`
+                            : "-"
+                    }
                 </td>
             </tr>
         `;
     });
 }
 
-window.toggleListingStatus = async (id, status) => {
-    const newStatus = status === "active" ? "hidden" : "active";
+/**
+ * Update Role
+ */
+window.updateUserRole = async (id, role) => {
+    const { error } = await supabase.from("users").update({ role }).eq("id", id);
+
+    if (error) {
+        console.error(error);
+        alert("Error: cannot update role");
+        return;
+    }
+
+    loadUsers();
+};
+
+/**
+ * Ban toggle
+ */
+window.toggleBan = async (id, current) => {
+    const { error } = await supabase.from("users").update({ banned: !current }).eq("id", id);
+
+    if (error) {
+        console.error(error);
+        alert("Error toggling ban");
+        return;
+    }
+
+    loadUsers();
+};
+
+/**
+ * Delete User
+ */
+window.deleteUser = async (id) => {
+    if (!confirm("Delete this user?")) return;
+
+    const { error } = await supabase.from("users").delete().eq("id", id);
+
+    if (error) {
+        console.error(error);
+        alert("Error deleting user");
+        return;
+    }
+
+    loadUsers();
+};
+
+/**
+ * LISTINGS SECTION
+ */
+async function loadListings() {
+    const tbody = document.getElementById("admin-listings");
+    tbody.innerHTML = "<tr><td colspan='5'>Loading...</td></tr>";
+
+    const { data, error } = await supabase
+        .from("listings")
+        .select("id, title, status, posted_by, users(email)");
+
+    if (error) {
+        console.error(error);
+        tbody.innerHTML = "<tr><td colspan='5'>Error loading</td></tr>";
+        return;
+    }
+
+    tbody.innerHTML = "";
+
+    data.forEach((l) => {
+        const isHidden = l.status === "hidden";
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${l.title}</td>
+                <td>${l.users?.email ?? "Unknown"}</td>
+                <td>${l.status}</td>
+                <td>
+                    <button class="btn warning small" onclick="toggleListing('${l.id}', '${l.status}')">
+                        ${isHidden ? "Unhide" : "Hide"}
+                    </button>
+                </td>
+                <td>
+                    <button class="btn danger small" onclick="deleteListing('${l.id}')">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+window.toggleListing = async (id, status) => {
+    const newStatus = status === "hidden" ? "active" : "hidden";
 
     const { error } = await supabase
         .from("listings")
@@ -217,28 +208,31 @@ window.toggleListingStatus = async (id, status) => {
         .eq("id", id);
 
     if (error) {
-        alert("Failed to update listing");
+        console.error(error);
+        alert("Error updating listing");
         return;
     }
+
     loadListings();
 };
 
-window.deleteListing = async id => {
-    if (!confirm("Delete listing?")) return;
+window.deleteListing = async (id) => {
+    if (!confirm("Delete this listing?")) return;
 
     const { error } = await supabase.from("listings").delete().eq("id", id);
 
     if (error) {
-        alert("Failed to delete listing");
+        console.error(error);
+        alert("Error deleting listing");
         return;
     }
+
     loadListings();
 };
 
-// ------------------------------
-// INIT
-// ------------------------------
-
+/**
+ * INIT
+ */
 (async () => {
     await requireAdminOrManager();
     await loadUsers();
