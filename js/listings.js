@@ -1,3 +1,11 @@
+import { ensureProfile } from "./auth.js";
+
+const { data: sessionData } = await supabase.auth.getSession();
+if (sessionData?.session) {
+    await ensureProfile(sessionData.session.user);
+}
+
+
 // js/listings.js
 import { supabase } from "./config.js";
 
