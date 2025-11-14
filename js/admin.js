@@ -87,18 +87,43 @@ async function loadListings() {
             title,
             status,
             posted_by,
-            users:users ( email )
+            users:users!fk_listings_posted_by ( email )
         `)
         .order("created_at", { ascending: false });
 
-    const tbody = document.getElementById("admin-listings");
-    tbody.innerHTML = "";
-
+    // If the FK name is wrong, fallback to the second relationship
     if (error) {
-        tbody.innerHTML = "<tr><td colspan='4'>Error loading listings</td></tr>";
-        console.error(error);
+        console.warn("Trying fallback relationship because:", error.message);
+
+        const { data: fallback, error: error2 } = await supabase
+            .from("listings")
+            .select(`
+                id,
+                title,
+                status,
+                posted_by,
+                users:users!listings_posted_by_fkey ( email )
+            `)
+            .order("created_at", { ascending: false });
+
+        if (error2) {
+            document.getElementById("admin-listings").innerHTML =
+                "<tr><td colspan='4'>Error loading listings</td></tr>";
+
+            console.error("Both FK joins failed:", error2);
+            return;
+        }
+
+        renderListings(fallback);
         return;
     }
+
+    renderListings(listings);
+}
+
+function renderListings(listings) {
+    const tbody = document.getElementById("admin-listings");
+    tbody.innerHTML = "";
 
     listings.forEach(l => {
         tbody.innerHTML += `
