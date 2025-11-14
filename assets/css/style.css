@@ -1,0 +1,315 @@
+/* --------------------------------------
+   FONTS & ROOT VARIABLES
+-----------------------------------------*/
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Tajawal:wght@400;500;700&display=swap');
+
+:root {
+    --primary: #246BFD;
+    --primary-light: #3B82F6;
+    --accent: #10B981;
+    --bg: #F8FAFC;
+    --white: #ffffff;
+    --text-dark: #0F172A;
+    --text-light: #64748B;
+    --shadow: 0 6px 20px rgba(0,0,0,0.08);
+    --radius: 14px;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    font-family: 'Inter', 'Tajawal', sans-serif;
+    color: var(--text-dark);
+}
+
+/* RTL Support */
+html[dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+}
+
+/* --------------------------------------
+   HEADER
+-----------------------------------------*/
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 30px;
+    background: var(--white);
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.header h1, .header h2 {
+    margin: 0;
+    font-weight: 700;
+    font-size: 22px;
+}
+
+.dashboard-btn {
+    padding: 10px 16px;
+    background: var(--primary);
+    color: var(--white);
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-weight: 500;
+    transition: 0.25s ease;
+}
+
+.dashboard-btn:hover {
+    background: var(--primary-light);
+}
+
+/* --------------------------------------
+   FILTERS
+-----------------------------------------*/
+.filters {
+    display: flex;
+    gap: 10px;
+}
+
+.filters button {
+    padding: 8px 16px;
+    background: var(--white);
+    color: var(--text-dark);
+    border: 1px solid #dce3ed;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: 0.25s ease;
+}
+
+.filters button:hover {
+    background: var(--primary);
+    color: var(--white);
+}
+
+/* --------------------------------------
+   LISTINGS GRID
+-----------------------------------------*/
+.listings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 22px;
+    padding: 30px;
+}
+
+.listing-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 15px;
+    transition: 0.25s ease;
+}
+
+.listing-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 26px rgba(0,0,0,0.12);
+}
+
+.listing-card .thumb {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    border-radius: var(--radius);
+}
+
+.listing-card h3 {
+    font-size: 18px;
+    margin: 12px 0 6px;
+    font-weight: 600;
+}
+
+.listing-card button {
+    padding: 8px 14px;
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.listing-card button:hover {
+    background: var(--primary-light);
+}
+
+/* --------------------------------------
+   LOGIN PAGE
+-----------------------------------------*/
+.login-container {
+    max-width: 400px;
+    margin: 60px auto;
+    padding: 30px;
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+
+.login-container input {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: var(--radius);
+    border: 1px solid #dce3ed;
+}
+
+.login-container button {
+    width: 100%;
+    padding: 12px;
+    background: var(--primary);
+    color: var(--white);
+    border-radius: var(--radius);
+    border: none;
+    margin-top: 10px;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.login-container button:hover {
+    background: var(--primary-light);
+}
+
+/* --------------------------------------
+   FORMS (ADD/EDIT LISTING)
+-----------------------------------------*/
+.form {
+    max-width: 500px;
+    margin: 30px auto;
+    padding: 30px;
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.form label {
+    font-weight: 600;
+    margin-top: 12px;
+    display: block;
+}
+
+.form input,
+.form select,
+.form textarea {
+    width: 100%;
+    padding: 12px;
+    margin-top: 6px;
+    border-radius: var(--radius);
+    border: 1px solid #dce3ed;
+    font-size: 15px;
+}
+
+.form button {
+    width: 100%;
+    padding: 14px;
+    margin-top: 20px;
+    background: var(--accent);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.form button:hover {
+    background: #0ca471;
+}
+
+/* --------------------------------------
+   DASHBOARD TABLE
+-----------------------------------------*/
+.listing-table {
+    width: 90%;
+    margin: 20px auto;
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border-collapse: collapse;
+}
+
+.listing-table th {
+    padding: 14px;
+    background: var(--primary);
+    color: var(--white);
+    font-weight: 600;
+}
+
+.listing-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e6e6e6;
+}
+
+.listing-table tr:hover {
+    background: #f1f5ff;
+}
+
+.add-btn {
+    display: inline-block;
+    margin: 20px;
+    padding: 12px 20px;
+    background: var(--primary);
+    color: var(--white);
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* --------------------------------------
+   GALLERY (DETAILS PAGE)
+-----------------------------------------*/
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+    padding: 20px;
+}
+
+.gallery img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+/* --------------------------------------
+   RESPONSIVE
+-----------------------------------------*/
+@media(max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+
+.admin-cards {
+    display: flex;
+    gap: 20px;
+    padding: 30px;
+}
+
+.admin-card {
+    flex: 1;
+    padding: 20px;
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+
+.admin-card h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.admin-card p {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 10px 0 0;
+}

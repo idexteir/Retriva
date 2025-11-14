@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="dashboard">Dashboard</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+
+<header class="header">
+    <h2 data-i18n="dashboard">Dashboard</h2>
+
+    <div style="display:flex; gap:10px;">
+
+        <!-- Language Switch -->
+        <button onclick="setLanguage('en')" class="dashboard-btn">EN</button>
+        <button onclick="setLanguage('ar')" class="dashboard-btn">AR</button>
+
+        <!-- Admin Button -->
+        <a id="adminBtn" class="dashboard-btn" href="admin.html" style="display:none;" data-i18n="admin_panel">
+            Admin Panel
+        </a>
+
+        <!-- Logout -->
+        <button onclick="logout()" class="dashboard-btn" data-i18n="logout">Logout</button>
+    </div>
+</header>
+
+<main>
+    <a class="add-btn" href="add-listing.html" data-i18n="add_listing">+ Add Listing</a>
+
+    <h3 style="padding: 0 30px;" data-i18n="my_listings">My Listings</h3>
+
+    <table class="listing-table">
+        <thead>
+            <tr>
+                <th data-i18n="title">Title</th>
+                <th data-i18n="type">Type</th>
+                <th data-i18n="status">Status</th>
+                <th data-i18n="actions">Actions</th>
+            </tr>
+        </thead>
+
+        <tbody id="dashboard-listings"></tbody>
+    </table>
+</main>
+
+<script type="module">
+
+    import { requireManager } from "./js/protect.js";
+    import { supabase } from "./js/config.js";
+    import { setLanguage, applyLanguage } from "./js/lang.js";
+
+    await requireManager();
+
+    const tbody = document.getElementById("dashboard-listings");
+
+    async function checkRole() {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const { data: profile } = await supabase
+            .from("users")
+            .select("role")
+            .eq("id", user.id)
+            .single();
+
+        if (profile?.role === "admin") {
+            document.getElementById("adminBtn").style.display = "inline-block";
+        }
+    }
+
+    await checkRole();
+
+    async function loadMyListings() {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const { data } = await supabase
+            .from("listings")
+            .select("id, title, type, status")
+            .eq("posted_by", user.id)
+            .order("created_at", { ascending: false });
+
+        tbody.innerHTML = "";
+
+        data.forEach(list => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${list.title}</td>
+                    <td>${list.type}</td>
+                    <td>${list.status}</td>
+                    <td>
+                        <a href="edit-listing.html?id=${list.id}" data-i18n="edit">Edit</a> |
+                        <a href="#" onclick="toggleStatus('${list.id}', '${list.status}')">
+                            ${list.status === "active"
+                                ? `<span data-i18n='hide'>Hide</span>`
+                                : `<span data-i18n='unhide'>Unhide</span>`
+                            }
+                        </a> |
+                        <a href="#" onclick="deleteListing('${list.id}')" data-i18n="delete">Delete</a>
+                    </td>
+                </tr>
+            `;
+        });
+
+        applyLanguage();
+    }
+
+    loadMyListings();
+
+    window.deleteListing = async (id) => {
+        if (!confirm("Delete?")) return;
+
+        const { data: images } = await supabase
+            .from("listing_images")
+            .select("image_url")
+            .eq("listing_id", id);
+
+        for (const img of images) {
+            const filePath = img.image_url.split("/listing-images/")[1];
+            await supabase.storage.from("listing-images").remove([filePath]);
+        }
+
+        await supabase.from("listing_images").delete().eq("listing_id", id);
+        await supabase.from("listings").delete().eq("id", id);
+
+        loadMyListings();
+    };
+
+    window.toggleStatus = async (id, status) => {
+        const newStatus = status === "active" ? "hidden" : "active";
+
+        await supabase
+            .from("listings")
+            .update({ status: newStatus })
+            .eq("id", id);
+
+        loadMyListings();
+    };
+
+    window.logout = async () => {
+        await supabase.auth.signOut();
+        window.location.href = "login.html";
+    };
+
+    applyLanguage();
+</script>
+
+<script type="module" src="./js/lang.js"></script>
+
+</body>
+</html>

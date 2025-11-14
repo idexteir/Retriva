@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="app_title">Retriva</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+
+<header class="header">
+    <h1 data-i18n="app_title">Retriva</h1>
+
+    <div class="filters">
+        <button onclick="loadListings('all')" data-i18n="filters_all">All</button>
+        <button onclick="loadListings('resort')" data-i18n="filters_resorts">Resorts</button>
+        <button onclick="loadListings('apartment')" data-i18n="filters_apartments">Apartments</button>
+        <button onclick="loadListings('vacation_home')" data-i18n="filters_vacation">Vacation Homes</button>
+    </div>
+
+    <div style="display:flex; gap: 10px;">
+        <button onclick="setLanguage('en')" class="dashboard-btn">EN</button>
+        <button onclick="setLanguage('ar')" class="dashboard-btn">AR</button>
+        <a class="dashboard-btn" href="dashboard.html" data-i18n="dashboard">Dashboard</a>
+    </div>
+</header>
+
+<main>
+    <div id="listings-container" class="listings-grid"></div>
+</main>
+
+<script type="module">
+    import { getAllListings } from "./js/listings.js";
+    import { applyLanguage, setLanguage } from "./js/lang.js";
+
+    async function loadListings(filter = "all") {
+        const container = document.getElementById("listings-container");
+        container.innerHTML = "<p>Loading...</p>";
+
+        const listings = await getAllListings(filter);
+        container.innerHTML = "";
+
+        listings.forEach(item => {
+            const img = item.listing_images?.[0]?.image_url ?? "assets/images/no-image.png";
+
+            const card = document.createElement("div");
+            card.className = "listing-card";
+
+            card.innerHTML = `
+                <img src="${img}" class="thumb" />
+                <h3>${item.title}</h3>
+                <p>${item.location_text}</p>
+                <button onclick="openDetails('${item.id}')" data-i18n="view">View</button>
+            `;
+
+            container.appendChild(card);
+        });
+    }
+
+    window.openDetails = (id) => {
+        localStorage.setItem("listing-id", id);
+        window.location.href = "details.html";
+    };
+
+    loadListings();
+    applyLanguage();
+</script>
+
+<script type="module" src="./js/lang.js"></script>
+
+</body>
+</html>

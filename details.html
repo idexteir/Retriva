@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="view">Listing Details</title>
+
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/lightbox.css">
+</head>
+
+<body>
+
+<header class="header">
+    <a href="index.html" class="dashboard-btn">←</a>
+
+    <h2 id="title">...</h2>
+
+    <div style="display:flex; gap:10px;">
+        <button onclick="setLanguage('en')" class="dashboard-btn">EN</button>
+        <button onclick="setLanguage('ar')" class="dashboard-btn">AR</button>
+    </div>
+</header>
+
+<main>
+    <div id="images" class="gallery"></div>
+
+    <p><strong data-i18n="location">Location:</strong> <span id="loc"></span></p>
+    <p><strong data-i18n="description">Description:</strong> <span id="desc"></span></p>
+</main>
+
+<script type="module">
+    import { supabase } from "./js/config.js";
+    import { applyLanguage, setLanguage } from "./js/lang.js";
+    import { initLightbox, openLightbox } from "./js/lightbox.js";
+
+    const id = localStorage.getItem("listing-id");
+
+    async function loadDetails() {
+        const { data } = await supabase
+            .from("listings")
+            .select("*, listing_images(image_url)")
+            .eq("id", id)
+            .single();
+
+        document.getElementById("title").innerText = data.title;
+        document.getElementById("loc").innerText = data.location_text;
+        document.getElementById("desc").innerText = data.description || "—";
+
+        const gallery = document.getElementById("images");
+
+        const imgs = data.listing_images.map(img => img.image_url);
+        initLightbox(imgs);
+
+        gallery.innerHTML = "";
+
+        imgs.forEach((url, index) => {
+            const img = document.createElement("img");
+            img.src = url;
+            img.onclick = () => openLightbox(index);
+            gallery.appendChild(img);
+        });
+
+        applyLanguage();
+    }
+
+    loadDetails();
+</script>
+
+<script type="module" src="./js/lang.js"></script>
+
+</body>
+</html>

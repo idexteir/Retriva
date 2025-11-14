@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="add_listing">Add Listing</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+
+<header class="header">
+    <h2 data-i18n="add_listing">Add Listing</h2>
+
+    <div style="display:flex; gap:10px;">
+        <button onclick="setLanguage('en')" class="dashboard-btn">EN</button>
+        <button onclick="setLanguage('ar')" class="dashboard-btn">AR</button>
+    </div>
+</header>
+
+<main>
+    <form id="addForm" class="form">
+
+        <label data-i18n="title">Title</label>
+        <input id="title" required>
+
+        <label data-i18n="type">Type</label>
+        <select id="type" required>
+            <option value="resort" data-i18n="filters_resorts">Resort</option>
+            <option value="apartment" data-i18n="filters_apartments">Apartment</option>
+            <option value="vacation_home" data-i18n="filters_vacation">Vacation Home</option>
+        </select>
+
+        <label data-i18n="location">Location</label>
+        <input id="location" required>
+
+        <label data-i18n="description">Description</label>
+        <textarea id="description"></textarea>
+
+        <label data-i18n="images">Images</label>
+        <input id="images" type="file" multiple required>
+
+        <button type="submit" data-i18n="add_listing">Add Listing</button>
+    </form>
+</main>
+
+<script type="module" src="./js/add-listing.js"></script>
+<script type="module" src="./js/lang.js"></script>
+
+</body>
+</html>
