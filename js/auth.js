@@ -1,14 +1,14 @@
-// FULL FILE — auth.js
+// FULL FILE — auth.js (UPDATED FOR GITHUB PAGES)
 import { supabase } from "./config.js";
 
 // --------------------------
-// GOOGLE LOGIN
+// GOOGLE LOGIN (FIXED REDIRECT)
 // --------------------------
 export async function loginWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-            redirectTo: window.location.origin + "/dashboard.html"
+            redirectTo: "https://idexteir.github.io/Retriva/dashboard.html"
         }
     });
 
@@ -22,7 +22,12 @@ export async function loginWithPhone(phone) {
     const { error } = await supabase.auth.signInWithOtp({
         phone
     });
-    if (error) alert(error.message);
+
+    if (error) {
+        alert(error.message);
+    } else {
+        alert("OTP sent!");
+    }
 }
 
 // --------------------------
@@ -35,10 +40,15 @@ export async function verifyOTP(phone, token) {
         type: "sms"
     });
 
-    if (error) { alert(error.message); return; }
+    if (error) {
+        alert(error.message);
+        return;
+    }
 
     await ensureProfile(data.user);
-    window.location.href = "dashboard.html";
+
+    // Redirect to dashboard
+    window.location.href = "https://idexteir.github.io/Retriva/dashboard.html";
 }
 
 // --------------------------
@@ -47,12 +57,14 @@ export async function verifyOTP(phone, token) {
 export async function ensureProfile(user) {
     if (!user) return;
 
+    // Check if profile already exists
     const { data } = await supabase
         .from("users")
         .select("id")
         .eq("id", user.id)
         .single();
 
+    // Insert if new
     if (!data) {
         await supabase.from("users").insert({
             id: user.id,
