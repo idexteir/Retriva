@@ -1,66 +1,124 @@
-<!-- ======================== -->
-<!-- admin.html -->
-<!-- ======================== -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Admin Panel - Retriva</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Retriva Admin Panel</title>
 
+    <link rel="stylesheet" href="assets/css/style.css" />
+    <link rel="stylesheet" href="assets/css/loading.css" />
 
-<link rel="stylesheet" href="assets/css/style.css" />
-<link rel="stylesheet" href="assets/css/loading.css" />
+    <style>
+        .admin-container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 40px auto;
+        }
+
+        .admin-title {
+            font-size: 32px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .card-box {
+            background: white;
+            padding: 25px;
+            border-radius: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+            margin-bottom: 35px;
+        }
+
+        .card-title {
+            font-size: 22px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        th {
+            background: #eef4ff;
+            text-align: left;
+            padding: 12px;
+            font-size: 14px;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .action-cell {
+            white-space: nowrap;
+            display: flex;
+            gap: 8px;
+        }
+
+        .toggle-label {
+            font-size: 13px;
+        }
+    </style>
 </head>
+
 <body>
 
-
+<!-- NAVBAR -->
 <div id="app-header"></div>
+<script type="module" src="js/header.js"></script>
 
+<div class="admin-container">
 
-<div class="container">
-<h1 class="page-title">Admin Panel</h1>
+    <h1 class="admin-title">Admin Panel</h1>
 
+    <!-- USERS MANAGEMENT -->
+    <div class="card-box">
+        <h2 class="card-title">Users Management</h2>
 
-<!-- USERS SECTION -->
-<h2 class="section-title">Users</h2>
-<table class="table">
-<thead>
-<tr>
-<th>Email</th>
-<th>Role</th>
-<th>Created</th>
-<th>Actions</th>
-</tr>
-</thead>
-<tbody id="admin-users">
-<tr><td colspan="4" class="loading">Loading...</td></tr>
-</tbody>
-</table>
+        <table>
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Ban / Unban</th>
+                    <th>Permissions</th>
+                </tr>
+            </thead>
+            <tbody id="admin-users">
+                <tr><td colspan="5">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
 
+    <!-- LISTINGS MANAGEMENT -->
+    <div class="card-box">
+        <h2 class="card-title">Listings Management</h2>
 
-<!-- LISTINGS SECTION -->
-<h2 class="section-title">Listings</h2>
-<table class="table">
-<thead>
-<tr>
-<th>Image</th>
-<th>Title</th>
-<th>Owner</th>
-<th>Status</th>
-<th>Actions</th>
-</tr>
-</thead>
-<tbody id="admin-listings">
-<tr><td colspan="5" class="loading">Loading...</td></tr>
-</tbody>
-</table>
+        <table>
+            <thead>
+                <tr>
+                    <th>Thumbnail</th>
+                    <th>Title</th>
+                    <th>Owner</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="admin-listings">
+                <tr><td colspan="5">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
 </div>
 
-
-<script type="module" src="js/header.js"></script>
 <script type="module" src="js/admin.js"></script>
-
 
 </body>
 </html>
