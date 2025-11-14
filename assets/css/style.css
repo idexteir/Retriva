@@ -96,6 +96,28 @@ body {
     width: 20px;
 }
 
+.add-btn {
+    display: inline-block;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.btn.warning {
+    background: #ff9800;
+    color: white;
+}
+.btn.warning:hover {
+    background: #e68900;
+}
+
+.btn.danger {
+    background: #e53935;
+    color: white;
+}
+.btn.danger:hover {
+    background: #c62828;
+}
+
 /* ---------------------------
    PAGE TITLES
 ---------------------------- */
@@ -306,16 +328,7 @@ textarea {
         width: 100%;
     }
 
-    .add-btn {
-        display: inline-block;
-        margin-bottom: 20px;
-        font-size: 14px;
-    }
-
-    .btn.danger {
-        background: #e53935;
-        color: white;
-    }
+ 
     
     
 }
