@@ -3,6 +3,12 @@ import { ensureProfile } from "./auth.js";
 
 let CURRENT_ROLE = "user";
 
+// Helper to get current logged-in user ID
+async function getCurrentUserId() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    return sessionData?.session?.user?.id || null;
+}
+
 // ===============================
 // ACCESS CHECK
 // ===============================
@@ -38,6 +44,8 @@ async function requireAdminOrManager() {
 // LOAD USERS
 // ===============================
 async function loadUsers() {
+    const currentUserId = await getCurrentUserId();
+
     const { data: users, error } = await supabase
         .from("users")
         .select("*")
@@ -52,10 +60,13 @@ async function loadUsers() {
     }
 
     users.forEach(u => {
-        const isSelf = (u.id === supabase.auth.user()?.id);
+        const isSelf = (u.id === currentUserId);
 
-        // Role dropdown rules
+        // =================================
+        // ROLE DROPDOWN RULES
+        // =================================
         let roleControl = "";
+
         if (CURRENT_ROLE === "admin") {
             roleControl = `
                 <select onchange="updateUserRole('${u.id}', this.value)" ${isSelf ? "disabled" : ""}>
@@ -64,36 +75,54 @@ async function loadUsers() {
                     <option value="admin" ${u.role === "admin" ? "selected" : ""}>Admin</option>
                 </select>
             `;
-        } else if (CURRENT_ROLE === "manager") {
+        }
+
+        if (CURRENT_ROLE === "manager") {
+            // Manager CANNOT modify admins or themself
+            const disabled = (isSelf || u.role === "admin") ? "disabled" : "";
+
             roleControl = `
-                <select onchange="updateUserRole('${u.id}', this.value)" 
-                    ${(u.role === "admin" || isSelf) ? "disabled" : ""}>
+                <select onchange="updateUserRole('${u.id}', this.value)" ${disabled}>
                     <option value="user" ${u.role === "user" ? "selected" : ""}>User</option>
                     <option value="manager" ${u.role === "manager" ? "selected" : ""}>Manager</option>
                 </select>
             `;
         }
 
-        // Ban toggle
+        // =================================
+        // BAN TOGGLE
+        // =================================
         const banned = u.banned_until !== null;
+
         const banToggle = `
             <label class="ban-toggle">
-                <input type="checkbox" ${banned ? "checked" : ""} 
-                    onchange="toggleBan('${u.id}', this.checked)" 
+                <input type="checkbox"
+                    ${banned ? "checked" : ""}
+                    onchange="toggleBan('${u.id}', this.checked)"
                     ${isSelf ? "disabled" : ""}>
                 <span class="slider"></span>
             </label>
         `;
 
-        // Delete button
+        // =================================
+        // DELETE BUTTON
+        // =================================
+
+        const deleteDisabled =
+            isSelf ||
+            (CURRENT_ROLE === "manager" && u.role === "admin");
+
         const deleteBtn = `
-            <button class="btn danger" 
-                onclick="deleteUser('${u.id}')" 
-                ${(isSelf || u.role === "admin" && CURRENT_ROLE !== "admin") ? "disabled" : ""}>
+            <button class="btn danger"
+                onclick="deleteUser('${u.id}')"
+                ${deleteDisabled ? "disabled" : ""}>
                 Delete
             </button>
         `;
 
+        // =================================
+        // OUTPUT ROW
+        // =================================
         tbody.innerHTML += `
             <tr>
                 <td>${u.email}</td>
@@ -164,7 +193,7 @@ window.deleteUser = async (id) => {
 };
 
 // ===============================
-// LISTINGS
+// LOAD LISTINGS
 // ===============================
 async function loadListings() {
     const { data, error } = await supabase
@@ -196,13 +225,15 @@ async function loadListings() {
                 <td>${l.status}</td>
 
                 <td>
-                    <button class="btn warning" onclick="toggleListing('${l.id}', '${l.status}')">
+                    <button class="btn warning"
+                        onclick="toggleListing('${l.id}', '${l.status}')">
                         ${isHidden ? "Unhide" : "Hide"}
                     </button>
                 </td>
 
                 <td>
-                    <button class="btn danger" onclick="deleteListing('${l.id}')">
+                    <button class="btn danger"
+                        onclick="deleteListing('${l.id}')">
                         Delete
                     </button>
                 </td>
