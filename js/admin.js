@@ -6,7 +6,6 @@ let CURRENT_ROLE = "user";
 let CURRENT_USER_ID = null;
 
 // ======================= ACCESS CHECK =======================
-
 async function requireAdminOrManager() {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
@@ -34,20 +33,14 @@ async function requireAdminOrManager() {
 }
 
 // ======================= LOAD USERS =======================
-
 async function loadUsers() {
     const tbody = document.getElementById("admin-users");
     tbody.innerHTML = "";
 
-    const { data: users, error } = await supabase
+    const { data: users } = await supabase
         .from("users")
         .select("*")
         .order("created_at", { ascending: true });
-
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="4">Error loading users</td></tr>`;
-        return;
-    }
 
     users.forEach(u => {
         const isSelf = u.id === CURRENT_USER_ID;
@@ -101,33 +94,22 @@ async function loadUsers() {
 // ======================= UPDATE ROLE =======================
 
 window.updateRole = async (id, newRole) => {
-    const { error } = await supabase
-        .from("users")
-        .update({ role: newRole })
-        .eq("id", id);
-
-    if (error) {
-        alert("Failed to update role");
-        return;
-    }
-
+    await supabase.from("users").update({ role: newRole }).eq("id", id);
     loadUsers();
 };
 
 // ======================= BAN USER =======================
 
 window.toggleBan = async (id, isBanned) => {
-    const banned_until = isBanned ? new Date().toISOString() : null;
+    // 🔥 PERMANENT BAN FIX — banned_until must be in the future
+    const banned_until = isBanned
+        ? new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString() // 100 years
+        : null;
 
-    const { error } = await supabase
+    await supabase
         .from("users")
         .update({ banned_until })
         .eq("id", id);
-
-    if (error) {
-        alert("Failed to update ban");
-        return;
-    }
 
     loadUsers();
 };
@@ -137,34 +119,20 @@ window.toggleBan = async (id, isBanned) => {
 window.deleteUser = async (id) => {
     if (!confirm("Delete this user permanently?")) return;
 
-    const { error } = await supabase
-        .from("users")
-        .delete()
-        .eq("id", id);
-
-    if (error) {
-        alert("Delete failed");
-        return;
-    }
+    await supabase.from("users").delete().eq("id", id);
 
     loadUsers();
 };
 
 // ======================= LOAD LISTINGS =======================
-
 async function loadListings() {
     const tbody = document.getElementById("admin-listings");
     tbody.innerHTML = "";
 
-    const { data: listings, error } = await supabase
+    const { data: listings } = await supabase
         .from("listings")
-        .select("id, title, status, users(email)")
+        .select("id, title, status, posted_by, users(email)")
         .order("created_at", { ascending: false });
-
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="4">Error loading listings</td></tr>`;
-        return;
-    }
 
     listings.forEach(l => {
         tbody.innerHTML += `
@@ -188,15 +156,10 @@ async function loadListings() {
 window.toggleListing = async (id, status) => {
     const newStatus = status === "hidden" ? "active" : "hidden";
 
-    const { error } = await supabase
+    await supabase
         .from("listings")
         .update({ status: newStatus })
         .eq("id", id);
-
-    if (error) {
-        alert("Listing update failed");
-        return;
-    }
 
     loadListings();
 };
@@ -206,15 +169,7 @@ window.toggleListing = async (id, status) => {
 window.deleteListing = async (id) => {
     if (!confirm("Delete listing?")) return;
 
-    const { error } = await supabase
-        .from("listings")
-        .delete()
-        .eq("id", id);
-
-    if (error) {
-        alert("Delete failed");
-        return;
-    }
+    await supabase.from("listings").delete().eq("id", id);
 
     loadListings();
 };
