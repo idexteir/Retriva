@@ -1,22 +1,41 @@
+// ======================= IMPORTS =======================
 import { supabase } from "./config.js";
 import { ensureProfile } from "./auth.js";
+import { AdminDebug } from "./adminDebugTool.js";
 
 let CURRENT_ROLE = "user";
 let CURRENT_USER_ID = null;
 
+// ======================= ACCESS CHECK =======================
+
 async function requireAdminOrManager() {
-    const { data: sessionData } = await supabase.auth.getSession();
+    AdminDebug.log("RequireAdminOrManager → start", {});
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    AdminDebug.log("Session Data", { sessionData, sessionError });
+
     const session = sessionData?.session;
 
     if (!session) {
+        AdminDebug.error("Session Missing", "Redirecting to login");
         window.location.href = "login.html";
         return;
     }
 
     CURRENT_USER_ID = session.user.id;
 
+    AdminDebug.log("Session User", {
+        id: session.user.id,
+        email: session.user.email,
+        metadata: session.user.user_metadata
+    });
+
     const profile = await ensureProfile(session.user);
+
+    AdminDebug.log("Loaded Profile", profile);
+
     if (!profile) {
+        AdminDebug.error("Profile Missing", "Redirect to login");
         alert("Profile not found.");
         window.location.href = "login.html";
         return;
@@ -24,7 +43,10 @@ async function requireAdminOrManager() {
 
     CURRENT_ROLE = profile.role;
 
+    AdminDebug.log("Profile Role Resolved", { CURRENT_ROLE });
+
     if (CURRENT_ROLE === "user") {
+        AdminDebug.error("Access Denied", "User tried to access admin");
         alert("Access denied.");
         window.location.href = "index.html";
         return;
@@ -34,6 +56,8 @@ async function requireAdminOrManager() {
 // ======================= LOAD USERS =======================
 
 async function loadUsers() {
+    AdminDebug.log("LoadUsers → start", {});
+
     const tbody = document.getElementById("admin-users");
     tbody.innerHTML = "";
 
@@ -42,8 +66,11 @@ async function loadUsers() {
         .select("*")
         .order("created_at", { ascending: true });
 
+    AdminDebug.inspectResponse("LoadUsers → Supabase result", { data: users, error });
+
     if (error) {
         tbody.innerHTML = `<tr><td colspan="4">Error loading users</td></tr>`;
+        AdminDebug.error("LoadUsers Failed", error);
         return;
     }
 
@@ -96,16 +123,23 @@ async function loadUsers() {
             </tr>
         `;
     });
+
+    AdminDebug.log("LoadUsers → Completed", {});
 }
 
+// ======================= UPDATE ROLE =======================
+
 window.updateRole = async (id, newRole) => {
-    const { error } = await supabase
+    AdminDebug.inspectRequest("UpdateRole", { id, newRole });
+
+    const result = await supabase
         .from("users")
         .update({ role: newRole })
         .eq("id", id);
 
-    if (error) {
-        console.error(error);
+    AdminDebug.inspectResponse("UpdateRole → Result", result);
+
+    if (result.error) {
         alert("Failed to update role");
         return;
     }
@@ -113,16 +147,21 @@ window.updateRole = async (id, newRole) => {
     loadUsers();
 };
 
+// ======================= BAN USER =======================
+
 window.toggleBan = async (id, isBanned) => {
     const banned_until = isBanned ? new Date().toISOString() : null;
 
-    const { error } = await supabase
+    AdminDebug.inspectRequest("ToggleBan", { id, banned_until });
+
+    const result = await supabase
         .from("users")
         .update({ banned_until })
         .eq("id", id);
 
-    if (error) {
-        console.error(error);
+    AdminDebug.inspectResponse("ToggleBan → Result", result);
+
+    if (result.error) {
         alert("Failed to update ban");
         return;
     }
@@ -130,16 +169,21 @@ window.toggleBan = async (id, isBanned) => {
     loadUsers();
 };
 
+// ======================= DELETE USER =======================
+
 window.deleteUser = async (id) => {
+    AdminDebug.inspectRequest("DeleteUser", { id });
+
     if (!confirm("Delete this user permanently?")) return;
 
-    const { error } = await supabase
+    const result = await supabase
         .from("users")
         .delete()
         .eq("id", id);
 
-    if (error) {
-        console.error(error);
+    AdminDebug.inspectResponse("DeleteUser → Result", result);
+
+    if (result.error) {
         alert("Delete failed");
         return;
     }
@@ -147,17 +191,22 @@ window.deleteUser = async (id) => {
     loadUsers();
 };
 
-
 // ======================= LOAD LISTINGS =======================
 
 async function loadListings() {
+    AdminDebug.log("LoadListings → start", {});
+
     const tbody = document.getElementById("admin-listings");
     tbody.innerHTML = "";
 
-    const { data: listings, error } = await supabase
+    const result = await supabase
         .from("listings")
         .select("id, title, status, users(email)")
         .order("created_at", { ascending: false });
+
+    AdminDebug.inspectResponse("LoadListings → Result", result);
+
+    const { data: listings, error } = result;
 
     if (error) {
         tbody.innerHTML = `<tr><td colspan="4">Error loading listings</td></tr>`;
@@ -179,18 +228,25 @@ async function loadListings() {
             </tr>
         `;
     });
+
+    AdminDebug.log("LoadListings → Completed", {});
 }
+
+// ======================= UPDATE LISTING STATUS =======================
 
 window.toggleListing = async (id, status) => {
     const newStatus = status === "hidden" ? "active" : "hidden";
 
-    const { error } = await supabase
+    AdminDebug.inspectRequest("ToggleListing", { id, newStatus });
+
+    const result = await supabase
         .from("listings")
         .update({ status: newStatus })
         .eq("id", id);
 
-    if (error) {
-        console.error(error);
+    AdminDebug.inspectResponse("ToggleListing → Result", result);
+
+    if (result.error) {
         alert("Listing update failed");
         return;
     }
@@ -198,16 +254,21 @@ window.toggleListing = async (id, status) => {
     loadListings();
 };
 
+// ======================= DELETE LISTING =======================
+
 window.deleteListing = async (id) => {
+    AdminDebug.inspectRequest("DeleteListing", { id });
+
     if (!confirm("Delete listing?")) return;
 
-    const { error } = await supabase
+    const result = await supabase
         .from("listings")
         .delete()
         .eq("id", id);
 
-    if (error) {
-        console.error(error);
+    AdminDebug.inspectResponse("DeleteListing → Result", result);
+
+    if (result.error) {
         alert("Delete failed");
         return;
     }
@@ -215,10 +276,10 @@ window.deleteListing = async (id) => {
     loadListings();
 };
 
-
 // ======================= INIT =======================
 
 (async () => {
+    AdminDebug.log("Admin.js init", {});
     await requireAdminOrManager();
     await loadUsers();
     await loadListings();
