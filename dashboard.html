@@ -1,203 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title data-i18n="dashboard">Dashboard</title>
-
+    <title>Dashboard • Retriva</title>
     <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
 <body>
+<header id="app-header"></header>
 
-<!-- UNIVERSAL NAVIGATION HEADER (FOR ALL PAGES) -->
-<header class="nav-header">
+<main class="container">
+    <h2>Your Listings</h2>
 
-    <div class="nav-left">
-        <a href="index.html" class="nav-logo">Retriva</a>
-        <nav class="nav-links">
-            <a href="index.html" data-i18n="home">Home</a>
-            <a href="add-listing.html" data-i18n="add_listing">Add Listing</a>
-            <a href="dashboard.html" class="active" data-i18n="dashboard">Dashboard</a>
-            <a id="adminNav" href="admin.html" style="display:none;" data-i18n="admin_panel">Admin</a>
-        </nav>
-    </div>
+    <a href="add-listing.html" class="btn primary" style="margin-bottom:20px;">
+        + Add Listing
+    </a>
 
-    <div class="nav-right">
-        <button class="lang-btn" onclick="setLanguage('en')">EN</button>
-        <button class="lang-btn" onclick="setLanguage('ar')">AR</button>
-        <button class="logout-btn" onclick="logout()" data-i18n="logout">Logout</button>
-    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Preview</th>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
 
-</header>
-<!-- END HEADER -->
-
-<main>
-    <section class="page-section">
-        <h2 data-i18n="my_listings">My Listings</h2>
-
-        <div class="action-bar">
-            <a class="primary-btn" href="add-listing.html" data-i18n="add_listing">+ Add Listing</a>
-        </div>
-
-        <table class="listing-table">
-            <thead>
-                <tr>
-                    <th data-i18n="title">Title</th>
-                    <th data-i18n="type">Type</th>
-                    <th data-i18n="status">Status</th>
-                    <th data-i18n="actions">Actions</th>
-                </tr>
-            </thead>
-
-            <tbody id="dashboard-listings"></tbody>
-        </table>
-    </section>
+        <tbody id="dashboard-listings"></tbody>
+    </table>
 </main>
 
-<!-- PAGE LOGIC -->
-<script type="module">
-
-/* -----------------------------------------
-   IMPORTS
------------------------------------------- */
-import { supabase } from "./js/config.js";
-import { requireManager } from "./js/protect.js";
-import { ensureProfile } from "./js/auth.js";
-import { setLanguage, applyLanguage } from "./js/lang.js";
-
-/* -----------------------------------------
-   HANDLE OAUTH CALLBACK (IMPORTANT)
------------------------------------------- */
-try {
-    await supabase.auth.exchangeCodeForSession(window.location.href);
-} catch (e) {
-    console.warn("OAuth exchange skipped:", e.message);
-}
-
-// Clean the long OAuth URL
-if (window.location.hash.includes("access_token")) {
-    window.history.replaceState({}, document.title, "dashboard.html");
-}
-
-/* -----------------------------------------
-   USER PROFILE AUTO-CREATION
------------------------------------------- */
-const { data: session } = await supabase.auth.getSession();
-const currentUser = session?.session?.user;
-
-if (currentUser) {
-    await ensureProfile(currentUser);  // inserts into users table if missing
-}
-
-/* -----------------------------------------
-   PAGE ACCESS CONTROL
------------------------------------------- */
-await requireManager();
-
-/* -----------------------------------------
-   LOAD LISTINGS FOR THIS USER
------------------------------------------- */
-const tbody = document.getElementById("dashboard-listings");
-
-async function loadMyListings() {
-    const { data: session } = await supabase.auth.getSession();
-    const user = session.session.user;
-
-    const { data: listings } = await supabase
-        .from("listings")
-        .select("id, title, type, status")
-        .eq("posted_by", user.id)
-        .order("created_at", { ascending: false });
-
-    tbody.innerHTML = "";
-
-    listings.forEach(list => {
-        tbody.innerHTML += `
-            <tr>
-                <td>${list.title}</td>
-                <td>${list.type}</td>
-                <td>${list.status}</td>
-                <td>
-                    <a href="edit-listing.html?id=${list.id}" data-i18n="edit">Edit</a> |
-                    <a href="#" onclick="toggleStatus('${list.id}', '${list.status}')">
-                        ${
-                            list.status === "active"
-                            ? `<span data-i18n="hide">Hide</span>`
-                            : `<span data-i18n="unhide">Unhide</span>`
-                        }
-                    </a> |
-                    <a href="#" onclick="deleteListing('${list.id}')" data-i18n="delete">Delete</a>
-                </td>
-            </tr>
-        `;
-    });
-
-    applyLanguage();
-}
-
-await loadMyListings();
-
-/* -----------------------------------------
-   CHECK ADMIN ROLE (SHOW ADMIN BUTTON)
------------------------------------------- */
-async function showAdminButton() {
-    const { data: session } = await supabase.auth.getSession();
-    const userId = session.session.user.id;
-
-    const { data: profile } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", userId)
-        .single();
-
-    if (profile?.role === "admin") {
-        document.getElementById("adminNav").style.display = "inline-block";
-    }
-}
-
-await showAdminButton();
-
-/* -----------------------------------------
-   DELETE LISTING
------------------------------------------- */
-window.deleteListing = async (id) => {
-    if (!confirm("Delete listing?")) return;
-
-    await supabase.from("listing_images").delete().eq("listing_id", id);
-    await supabase.from("listings").delete().eq("id", id);
-
-    loadMyListings();
-};
-
-/* -----------------------------------------
-   TOGGLE ACTIVE/HIDDEN STATUS
------------------------------------------- */
-window.toggleStatus = async (id, status) => {
-    const newStatus = status === "active" ? "hidden" : "active";
-
-    await supabase
-        .from("listings")
-        .update({ status: newStatus })
-        .eq("id", id);
-
-    loadMyListings();
-};
-
-/* -----------------------------------------
-   LOGOUT
------------------------------------------- */
-window.logout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "login.html";
-};
-
-applyLanguage();
-
-</script>
-
-<script type="module" src="./js/lang.js"></script>
-
+<script type="module" src="js/header.js"></script>
+<script type="module" src="js/dashboard.js"></script>
 </body>
 </html>

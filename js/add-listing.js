@@ -1,72 +1,67 @@
-// FULL FILE — add-listing.js
+// js/add-listing.js
 import { supabase } from "./config.js";
+import { ensureProfile } from "./auth.js";
 
-const form = document.getElementById("addForm");
+const form = document.getElementById("add-listing-form");
 
 form.onsubmit = async (e) => {
     e.preventDefault();
 
-    // Get logged-in user
-    const { data: session } = await supabase.auth.getSession();
-    const user = session?.session?.user;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
 
-    if (!user) {
-        alert("You must be logged in.");
+    if (!session) {
         window.location.href = "login.html";
         return;
     }
 
+    const user = session.user;
+    await ensureProfile(user);
+
     const title = document.getElementById("title").value;
     const type = document.getElementById("type").value;
+    const description = document.getElementById("description").value;
     const location = document.getElementById("location").value;
-    const desc = document.getElementById("description").value;
-    const files = document.getElementById("images").files;
 
-    // Insert listing into DB
-    const { data: listing, error: listError } = await supabase
+    // 1) Insert listing
+    const { data: listing, error: listingError } = await supabase
         .from("listings")
         .insert({
-            posted_by: user.id,
             title,
             type,
+            description,
             location_text: location,
-            description: desc
+            posted_by: user.id
         })
         .select()
         .single();
 
-    if (listError) {
-        console.error(listError);
-        alert("Error adding listing");
+    if (listingError || !listing) {
+        alert("Error creating listing");
         return;
     }
 
-    const listingId = listing.id;
+    // 2) Upload images (if any)
+    const files = document.getElementById("images").files;
 
-    // Upload images
     for (let file of files) {
-        const filename = `${listingId}/${Date.now()}-${file.name}`;
+        const filePath = `${listing.id}/${Date.now()}-${file.name}`;
 
         const { error: uploadError } = await supabase.storage
             .from("listing-images")
-            .upload(filename, file);
+            .upload(filePath, file);
 
-        if (uploadError) {
-            console.error(uploadError);
-            alert("Upload blocked — fix storage policies.");
-            return;
-        }
+        if (uploadError) continue;
 
-        const publicURL = supabase.storage
+        const publicUrl = supabase.storage
             .from("listing-images")
-            .getPublicUrl(filename).data.publicUrl;
+            .getPublicUrl(filePath).data.publicUrl;
 
         await supabase.from("listing_images").insert({
-            listing_id: listingId,
-            image_url: publicURL
+            listing_id: listing.id,
+            image_url: publicUrl
         });
     }
 
-    alert("Listing added successfully!");
     window.location.href = "dashboard.html";
 };

@@ -1,64 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="admin_panel">Admin Panel</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Panel • Retriva</title>
+<link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
 <body>
+<header id="app-header"></header>
 
-<header class="header">
-    <h2 data-i18n="admin_panel">Admin Panel</h2>
+<main class="container">
+    <h2>Admin Panel</h2>
 
-    <div style="display:flex; gap:10px;">
-        <button onclick="setLanguage('en')" class="dashboard-btn">EN</button>
-        <button onclick="setLanguage('ar')" class="dashboard-btn">AR</button>
-        <button onclick="logout()" class="dashboard-btn" data-i18n="logout">Logout</button>
-    </div>
-</header>
-
-<main>
-
-    <section class="admin-cards">
-        <div class="admin-card">
-            <h3 data-i18n="total_users">Total Users</h3>
-            <p id="totalUsers">0</p>
-        </div>
-
-        <div class="admin-card">
-            <h3 data-i18n="total_managers">Managers</h3>
-            <p id="totalManagers">0</p>
-        </div>
-
-        <div class="admin-card">
-            <h3 data-i18n="total_listings">Total Listings</h3>
-            <p id="totalListings">0</p>
-        </div>
-    </section>
-
-    <h3 style="padding: 0 30px;" data-i18n="admin_manage_users">Manage Users</h3>
-
-    <table class="listing-table">
+    <h3>Users</h3>
+    <table class="table">
         <thead>
             <tr>
-                <th data-i18n="title">Name</th>
-                <th>Email / Phone</th>
-                <th data-i18n="type">Role</th>
-                <th data-i18n="status">Status</th>
-                <th data-i18n="actions">Actions</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
             </tr>
         </thead>
-
-        <tbody id="usersTable"></tbody>
+        <tbody id="admin-users"></tbody>
     </table>
 
+    <h3 style="margin-top:40px;">Listings</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Owner</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="admin-listings"></tbody>
+    </table>
 </main>
 
-<script type="module" src="./js/admin.js"></script>
-<script type="module" src="./js/lang.js"></script>
+<script type="module" src="js/header.js"></script>
+<script type="module" src="js/admin.js"></script>
 
 </body>
 </html>

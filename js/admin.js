@@ -1,55 +1,54 @@
-// FULL FILE — admin.js
+// js/admin.js
 import { supabase } from "./config.js";
-import { requireAdmin } from "./protect.js";
-
-await requireAdmin();
-
-const tbl = document.getElementById("usersTable");
 
 async function loadUsers() {
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from("users")
         .select("*")
         .order("created_at", { ascending: false });
 
-    tbl.innerHTML = "";
+    const tbody = document.getElementById("admin-users");
+    tbody.innerHTML = "";
+
+    if (error) {
+        tbody.innerHTML = "<tr><td colspan='3'>Error loading users</td></tr>";
+        return;
+    }
 
     data.forEach(u => {
-        tbl.innerHTML += `
+        tbody.innerHTML += `
             <tr>
-                <td>${u.name || "-"}</td>
-                <td>${u.email || u.phone}</td>
+                <td>${u.email}</td>
                 <td>${u.role}</td>
                 <td>${u.status}</td>
-                <td>
-                    <button onclick="toggleBlock('${u.id}', '${u.status}')">
-                        ${u.status === "active" ? "Block" : "Unblock"}
-                    </button>
-                    <button onclick="toggleRole('${u.id}', '${u.role}')">
-                        ${u.role === "manager" ? "Demote" : "Promote"}
-                    </button>
-                </td>
             </tr>
         `;
     });
 }
 
-window.toggleBlock = async (id, status) => {
-    await supabase
-        .from("users")
-        .update({ status: status === "active" ? "blocked" : "active" })
-        .eq("id", id);
+async function loadListings() {
+    const { data, error } = await supabase
+        .from("listings")
+        .select("title, status, posted_by");
 
-    loadUsers();
-};
+    const tbody = document.getElementById("admin-listings");
+    tbody.innerHTML = "";
 
-window.toggleRole = async (id, role) => {
-    await supabase
-        .from("users")
-        .update({ role: role === "manager" ? "user" : "manager" })
-        .eq("id", id);
+    if (error) {
+        tbody.innerHTML = "<tr><td colspan='3'>Error loading listings</td></tr>";
+        return;
+    }
 
-    loadUsers();
-};
+    data.forEach(l => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${l.title}</td>
+                <td>${l.posted_by}</td>
+                <td>${l.status}</td>
+            </tr>
+        `;
+    });
+}
 
 loadUsers();
+loadListings();

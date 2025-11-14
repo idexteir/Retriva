@@ -1,60 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retriva – Login</title>
+    <title>Login • Retriva</title>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 
-<body>
+<body class="centered">
 
-<div class="login-container">
+<div class="login-card">
+    <h1 class="logo">Retriva</h1>
+    <p class="subtitle">Sign in to continue</p>
 
-    <h2 data-i18n="login_google">Login</h2>
-
-    <button id="googleLogin" data-i18n="login_google">Login with Google</button>
-
-    <h3 data-i18n="login_phone">Phone Login</h3>
-
-    <input id="phone" placeholder="05xxxxxxxx">
-    <button id="sendOtp" data-i18n="send_otp">Send OTP</button>
-
-    <div id="otpSection" style="display:none;">
-        <input id="otp" placeholder="123456">
-        <button id="verifyOtp" data-i18n="verify_otp">Verify</button>
-    </div>
-
-    <div style="margin-top:20px;">
-        <button onclick="setLanguage('en')" class="dashboard-btn">EN</button>
-        <button onclick="setLanguage('ar')" class="dashboard-btn">AR</button>
-    </div>
-
+    <button id="google-btn" class="btn google-btn">
+        <img src="assets/img/google.png" /> Continue with Google
+    </button>
 </div>
 
 <script type="module">
-    import { loginWithGoogle, loginWithPhone, verifyOTP } from "./js/auth.js";
-    import { setLanguage, applyLanguage } from "./js/lang.js";
+import { supabase } from "./js/config.js";
 
-    document.getElementById("googleLogin").onclick = loginWithGoogle;
-
-    document.getElementById("sendOtp").onclick = () => {
-        const phone = document.getElementById("phone").value;
-        loginWithPhone(phone);
-        document.getElementById("otpSection").style.display = "block";
-    };
-
-    document.getElementById("verifyOtp").onclick = () => {
-        const phone = document.getElementById("phone").value;
-        const otp = document.getElementById("otp").value;
-        verifyOTP(phone, otp);
-    };
-
-    applyLanguage();
+document.getElementById("google-btn").onclick = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+            redirectTo: window.location.origin + "/Retriva/dashboard.html"
+        }
+    });
+};
 </script>
-
-<script type="module" src="./js/lang.js"></script>
 
 </body>
 </html>
