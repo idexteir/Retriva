@@ -1,7 +1,11 @@
+// FULL FILE — auth.js
 import { supabase } from "./config.js";
 
+// --------------------------
+// GOOGLE LOGIN
+// --------------------------
 export async function loginWithGoogle() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
             redirectTo: window.location.origin + "/dashboard.html"
@@ -11,30 +15,51 @@ export async function loginWithGoogle() {
     if (error) alert(error.message);
 }
 
+// --------------------------
+// PHONE LOGIN (SEND OTP)
+// --------------------------
 export async function loginWithPhone(phone) {
-    const { data, error } = await supabase.auth.signInWithOtp({ phone });
-
+    const { error } = await supabase.auth.signInWithOtp({
+        phone
+    });
     if (error) alert(error.message);
-    else alert("OTP sent to your number");
 }
 
+// --------------------------
+// VERIFY OTP
+// --------------------------
 export async function verifyOTP(phone, token) {
     const { data, error } = await supabase.auth.verifyOtp({
         phone,
         token,
-        type: "sms",
+        type: "sms"
     });
 
-    if (error) alert(error.message);
-    else window.location.href = "dashboard.html";
+    if (error) { alert(error.message); return; }
+
+    await ensureProfile(data.user);
+    window.location.href = "dashboard.html";
 }
 
-export async function logout() {
-    await supabase.auth.signOut();
-    window.location.href = "login.html";
-}
+// --------------------------
+// ENSURE USER PROFILE
+// --------------------------
+export async function ensureProfile(user) {
+    if (!user) return;
 
-export async function getCurrentUser() {
-    const { data } = await supabase.auth.getUser();
-    return data.user;
+    const { data } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+
+    if (!data) {
+        await supabase.from("users").insert({
+            id: user.id,
+            email: user.email,
+            phone: user.phone,
+            role: "user",
+            status: "active"
+        });
+    }
 }
