@@ -2,16 +2,11 @@ import { supabase } from "./config.js";
 import { ensureProfile } from "./auth.js";
 
 let CURRENT_ROLE = "user";
+let CURRENT_USER_ID = null;
 
-// Helper to get current logged-in user ID
-async function getCurrentUserId() {
-    const { data: sessionData } = await supabase.auth.getSession();
-    return sessionData?.session?.user?.id || null;
-}
-
-// ===============================
-// ACCESS CHECK
-// ===============================
+/* -------------------------
+   ACCESS CHECK
+-------------------------- */
 async function requireAdminOrManager() {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
@@ -22,8 +17,9 @@ async function requireAdminOrManager() {
     }
 
     const user = session.user;
-    const profile = await ensureProfile(user);
+    CURRENT_USER_ID = user.id;
 
+    const profile = await ensureProfile(user);
     if (!profile) {
         alert("Profile not found");
         window.location.href = "login.html";
@@ -32,44 +28,43 @@ async function requireAdminOrManager() {
 
     CURRENT_ROLE = profile.role;
 
-    // User cannot enter admin page
-    if (profile.role === "user") {
+    if (CURRENT_ROLE === "user") {
         alert("Access denied");
         window.location.href = "index.html";
         return;
     }
 }
 
-// ===============================
-// LOAD USERS
-// ===============================
+/* -------------------------
+   LOAD USERS
+-------------------------- */
 async function loadUsers() {
-    const currentUserId = await getCurrentUserId();
+    const tbody = document.getElementById("admin-users");
+    tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
 
     const { data: users, error } = await supabase
         .from("users")
         .select("*")
-        .order("created_at");
-
-    const tbody = document.getElementById("admin-users");
-    tbody.innerHTML = "";
+        .order("created_at", { ascending: true });
 
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="4">Error loading users</td></tr>`;
+        tbody.innerHTML = "<tr><td colspan='4'>Error loading users</td></tr>";
         return;
     }
 
-    users.forEach(u => {
-        const isSelf = (u.id === currentUserId);
+    tbody.innerHTML = "";
 
-        // =================================
-        // ROLE DROPDOWN RULES
-        // =================================
-        let roleControl = "";
+    users.forEach((u) => {
+        const isSelf = u.id === CURRENT_USER_ID;
 
-        if (CURRENT_ROLE === "admin") {
+        /* ------------ ROLE CONTROL ------------ */
+
+        let roleControl = `<span>${u.role}</span>`;
+
+        // Admin can modify ANY role except themselves
+        if (CURRENT_ROLE === "admin" && !isSelf) {
             roleControl = `
-                <select onchange="updateUserRole('${u.id}', this.value)" ${isSelf ? "disabled" : ""}>
+                <select onchange="updateUserRole('${u.id}', this.value)">
                     <option value="user" ${u.role === "user" ? "selected" : ""}>User</option>
                     <option value="manager" ${u.role === "manager" ? "selected" : ""}>Manager</option>
                     <option value="admin" ${u.role === "admin" ? "selected" : ""}>Admin</option>
@@ -77,163 +72,141 @@ async function loadUsers() {
             `;
         }
 
-        if (CURRENT_ROLE === "manager") {
-            // Manager CANNOT modify admins or themself
-            const disabled = (isSelf || u.role === "admin") ? "disabled" : "";
-
+        // Manager can modify users & managers, not admins
+        if (CURRENT_ROLE === "manager" && u.role !== "admin" && !isSelf) {
             roleControl = `
-                <select onchange="updateUserRole('${u.id}', this.value)" ${disabled}>
+                <select onchange="updateUserRole('${u.id}', this.value)">
                     <option value="user" ${u.role === "user" ? "selected" : ""}>User</option>
                     <option value="manager" ${u.role === "manager" ? "selected" : ""}>Manager</option>
                 </select>
             `;
         }
 
-        // =================================
-        // BAN TOGGLE
-        // =================================
+        /* ------------ BAN CONTROL ------------ */
         const banned = u.banned_until !== null;
 
-        const banToggle = `
-            <label class="ban-toggle">
-                <input type="checkbox"
-                    ${banned ? "checked" : ""}
-                    onchange="toggleBan('${u.id}', this.checked)"
-                    ${isSelf ? "disabled" : ""}>
-                <span class="slider"></span>
-            </label>
+        let banControl = isSelf ? "-" : `
+            <input 
+                type="checkbox" 
+                ${banned ? "checked" : ""} 
+                onchange="toggleBan('${u.id}', this.checked)">
         `;
 
-        // =================================
-        // DELETE BUTTON
-        // =================================
+        /* ------------ DELETE CONTROL ------------ */
+        let deleteControl = "-";
 
-        const deleteDisabled =
-            isSelf ||
-            (CURRENT_ROLE === "manager" && u.role === "admin");
+        if (!isSelf) {
+            deleteControl = `
+                <button class="btn small danger" onclick="deleteUser('${u.id}')">
+                    Delete
+                </button>`;
+        }
 
-        const deleteBtn = `
-            <button class="btn danger"
-                onclick="deleteUser('${u.id}')"
-                ${deleteDisabled ? "disabled" : ""}>
-                Delete
-            </button>
-        `;
-
-        // =================================
-        // OUTPUT ROW
-        // =================================
         tbody.innerHTML += `
             <tr>
                 <td>${u.email}</td>
                 <td>${roleControl}</td>
-                <td>${banToggle}</td>
-                <td>${deleteBtn}</td>
+                <td>${banControl}</td>
+                <td>${deleteControl}</td>
             </tr>
         `;
     });
 }
 
-// ===============================
-// ROLE UPDATE
-// ===============================
-window.updateUserRole = async (id, newRole) => {
+/* -------------------------
+   UPDATE ROLE
+-------------------------- */
+window.updateUserRole = async (userId, role) => {
     const { error } = await supabase
         .from("users")
-        .update({ role: newRole })
-        .eq("id", id);
+        .update({ role })
+        .eq("id", userId);
 
     if (error) {
         console.error(error);
-        alert("Update rejected by RLS policy");
+        alert("❌ Error updating role");
         return;
     }
 
+    alert("✔ Role updated");
     loadUsers();
 };
 
-// ===============================
-// BAN / UNBAN
-// ===============================
-window.toggleBan = async (id, banned) => {
-    const banned_until = banned ? "2099-12-31" : null;
+/* -------------------------
+   BAN / UNBAN
+-------------------------- */
+window.toggleBan = async (userId, checked) => {
+    const banned_until = checked ? "2999-01-01" : null;
 
     const { error } = await supabase
         .from("users")
         .update({ banned_until })
-        .eq("id", id);
+        .eq("id", userId);
 
     if (error) {
         console.error(error);
-        alert("Cannot update ban status");
+        alert("❌ Error updating ban");
         return;
     }
 
     loadUsers();
 };
 
-// ===============================
-// DELETE USER
-// ===============================
-window.deleteUser = async (id) => {
-    if (!confirm("Delete this user?")) return;
+/* -------------------------
+   DELETE USER (soft delete)
+-------------------------- */
+window.deleteUser = async (userId) => {
+    if (!confirm("Are you sure?")) return;
 
     const { error } = await supabase
         .from("users")
-        .delete()
-        .eq("id", id);
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", userId);
 
     if (error) {
-        alert("Delete rejected by RLS");
         console.error(error);
+        alert("❌ Error deleting user");
         return;
     }
 
     loadUsers();
 };
 
-// ===============================
-// LOAD LISTINGS
-// ===============================
+/* -------------------------
+   LISTINGS
+-------------------------- */
 async function loadListings() {
-    const { data, error } = await supabase
+    const tbody = document.getElementById("admin-listings");
+
+    const { data: listings, error } = await supabase
         .from("listings")
         .select(`
             id,
             title,
             status,
-            posted_by,
             users ( email )
         `)
         .order("created_at", { ascending: false });
 
-    const tbody = document.getElementById("admin-listings");
-    tbody.innerHTML = "";
-
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="5">Error loading listings</td></tr>`;
+        tbody.innerHTML = "<tr><td colspan='4'>Error loading listings</td></tr>";
         return;
     }
 
-    data.forEach(l => {
-        const isHidden = l.status === "hidden";
+    tbody.innerHTML = "";
 
+    listings.forEach((l) => {
         tbody.innerHTML += `
             <tr>
                 <td>${l.title}</td>
                 <td>${l.users?.email ?? "Unknown"}</td>
                 <td>${l.status}</td>
-
                 <td>
-                    <button class="btn warning"
-                        onclick="toggleListing('${l.id}', '${l.status}')">
-                        ${isHidden ? "Unhide" : "Hide"}
+                    <button class="btn small warning" onclick="toggleVisibility('${l.id}', '${l.status}')">
+                        ${l.status === "hidden" ? "Unhide" : "Hide"}
                     </button>
-                </td>
 
-                <td>
-                    <button class="btn danger"
-                        onclick="deleteListing('${l.id}')">
+                    <button class="btn small danger" onclick="deleteListing('${l.id}')">
                         Delete
                     </button>
                 </td>
@@ -242,8 +215,8 @@ async function loadListings() {
     });
 }
 
-// Hide / Unhide listing
-window.toggleListing = async (id, status) => {
+/* Hide/unhide listing */
+window.toggleVisibility = async (id, status) => {
     const newStatus = status === "hidden" ? "active" : "hidden";
 
     const { error } = await supabase
@@ -252,33 +225,30 @@ window.toggleListing = async (id, status) => {
         .eq("id", id);
 
     if (error) {
-        alert("Action rejected by RLS");
+        alert("Error updating listing");
         return;
     }
 
     loadListings();
 };
 
-// Delete listing
+/* Delete listing */
 window.deleteListing = async (id) => {
-    if (!confirm("Delete this listing?")) return;
+    if (!confirm("Delete listing?")) return;
 
-    const { error } = await supabase
-        .from("listings")
-        .delete()
-        .eq("id", id);
+    const { error } = await supabase.from("listings").delete().eq("id", id);
 
     if (error) {
-        alert("Delete rejected by RLS");
+        alert("Error deleting");
         return;
     }
 
     loadListings();
 };
 
-// ===============================
-// INIT
-// ===============================
+/* -------------------------
+   INIT
+-------------------------- */
 (async () => {
     await requireAdminOrManager();
     await loadUsers();
