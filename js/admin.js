@@ -3,9 +3,9 @@ import { ensureProfile } from "./auth.js";
 
 let CURRENT_ROLE = "user";
 
-/**
- * Restrict access
- */
+// ===============================
+// ACCESS CHECK
+// ===============================
 async function requireAdminOrManager() {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
@@ -19,166 +19,174 @@ async function requireAdminOrManager() {
     const profile = await ensureProfile(user);
 
     if (!profile) {
-        alert("Profile missing");
+        alert("Profile not found");
         window.location.href = "login.html";
         return;
     }
 
     CURRENT_ROLE = profile.role;
 
+    // User cannot enter admin page
     if (profile.role === "user") {
-        alert("Access denied.");
+        alert("Access denied");
         window.location.href = "index.html";
         return;
     }
 }
 
-/**
- * USERS SECTION
- */
+// ===============================
+// LOAD USERS
+// ===============================
 async function loadUsers() {
-    const tbody = document.getElementById("admin-users");
-    tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+    const { data: users, error } = await supabase
+        .from("users")
+        .select("*")
+        .order("created_at");
 
-    const { data, error } = await supabase.from("users").select("*");
+    const tbody = document.getElementById("admin-users");
+    tbody.innerHTML = "";
 
     if (error) {
-        console.error(error);
-        tbody.innerHTML = "<tr><td colspan='4'>Error loading users</td></tr>";
+        tbody.innerHTML = `<tr><td colspan="4">Error loading users</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = "";
+    users.forEach(u => {
+        const isSelf = (u.id === supabase.auth.user()?.id);
 
-    data.forEach((u) => {
         // Role dropdown rules
         let roleControl = "";
-        const isAdmin = u.role === "admin";
-
         if (CURRENT_ROLE === "admin") {
-            // Admin cannot demote other admins
-            const disabled = isAdmin && u.id !== supabase.auth.getSession()?.session?.user?.id;
-
             roleControl = `
-                <select 
-                    onchange="updateUserRole('${u.id}', this.value)"
-                    ${disabled ? "disabled" : ""}
-                >
+                <select onchange="updateUserRole('${u.id}', this.value)" ${isSelf ? "disabled" : ""}>
                     <option value="user" ${u.role === "user" ? "selected" : ""}>User</option>
                     <option value="manager" ${u.role === "manager" ? "selected" : ""}>Manager</option>
                     <option value="admin" ${u.role === "admin" ? "selected" : ""}>Admin</option>
                 </select>
             `;
+        } else if (CURRENT_ROLE === "manager") {
+            roleControl = `
+                <select onchange="updateUserRole('${u.id}', this.value)" 
+                    ${(u.role === "admin" || isSelf) ? "disabled" : ""}>
+                    <option value="user" ${u.role === "user" ? "selected" : ""}>User</option>
+                    <option value="manager" ${u.role === "manager" ? "selected" : ""}>Manager</option>
+                </select>
+            `;
         }
 
-        if (CURRENT_ROLE === "manager") {
-            if (isAdmin) {
-                roleControl = `<span>admin</span>`;
-            } else {
-                roleControl = `
-                    <select onchange="updateUserRole('${u.id}', this.value)">
-                        <option value="user" ${u.role === "user" ? "selected" : ""}>User</option>
-                        <option value="manager" ${u.role === "manager" ? "selected" : ""}>Manager</option>
-                    </select>
-                `;
-            }
-        }
+        // Ban toggle
+        const banned = u.banned_until !== null;
+        const banToggle = `
+            <label class="ban-toggle">
+                <input type="checkbox" ${banned ? "checked" : ""} 
+                    onchange="toggleBan('${u.id}', this.checked)" 
+                    ${isSelf ? "disabled" : ""}>
+                <span class="slider"></span>
+            </label>
+        `;
 
-        const canBan = CURRENT_ROLE === "admin" || CURRENT_ROLE === "manager";
-        const toggleClass = u.banned ? "toggle active" : "toggle";
+        // Delete button
+        const deleteBtn = `
+            <button class="btn danger" 
+                onclick="deleteUser('${u.id}')" 
+                ${(isSelf || u.role === "admin" && CURRENT_ROLE !== "admin") ? "disabled" : ""}>
+                Delete
+            </button>
+        `;
 
         tbody.innerHTML += `
             <tr>
                 <td>${u.email}</td>
                 <td>${roleControl}</td>
-                <td>
-                    ${
-                        canBan && !isAdmin
-                            ? `<div class="${toggleClass}" onclick="toggleBan('${u.id}', ${u.banned})">
-                                    <div class="toggle-circle"></div>
-                               </div>`
-                            : "-"
-                    }
-                </td>
-                <td>
-                    ${
-                        (!isAdmin && (CURRENT_ROLE === "admin" || CURRENT_ROLE === "manager"))
-                            ? `<button class="btn danger small" onclick="deleteUser('${u.id}')">Delete</button>`
-                            : "-"
-                    }
-                </td>
+                <td>${banToggle}</td>
+                <td>${deleteBtn}</td>
             </tr>
         `;
     });
 }
 
-/**
- * Update Role
- */
-window.updateUserRole = async (id, role) => {
-    const { error } = await supabase.from("users").update({ role }).eq("id", id);
+// ===============================
+// ROLE UPDATE
+// ===============================
+window.updateUserRole = async (id, newRole) => {
+    const { error } = await supabase
+        .from("users")
+        .update({ role: newRole })
+        .eq("id", id);
 
     if (error) {
         console.error(error);
-        alert("Error: cannot update role");
+        alert("Update rejected by RLS policy");
         return;
     }
 
     loadUsers();
 };
 
-/**
- * Ban toggle
- */
-window.toggleBan = async (id, current) => {
-    const { error } = await supabase.from("users").update({ banned: !current }).eq("id", id);
+// ===============================
+// BAN / UNBAN
+// ===============================
+window.toggleBan = async (id, banned) => {
+    const banned_until = banned ? "2099-12-31" : null;
+
+    const { error } = await supabase
+        .from("users")
+        .update({ banned_until })
+        .eq("id", id);
 
     if (error) {
         console.error(error);
-        alert("Error toggling ban");
+        alert("Cannot update ban status");
         return;
     }
 
     loadUsers();
 };
 
-/**
- * Delete User
- */
+// ===============================
+// DELETE USER
+// ===============================
 window.deleteUser = async (id) => {
     if (!confirm("Delete this user?")) return;
 
-    const { error } = await supabase.from("users").delete().eq("id", id);
+    const { error } = await supabase
+        .from("users")
+        .delete()
+        .eq("id", id);
 
     if (error) {
+        alert("Delete rejected by RLS");
         console.error(error);
-        alert("Error deleting user");
         return;
     }
 
     loadUsers();
 };
 
-/**
- * LISTINGS SECTION
- */
+// ===============================
+// LISTINGS
+// ===============================
 async function loadListings() {
-    const tbody = document.getElementById("admin-listings");
-    tbody.innerHTML = "<tr><td colspan='5'>Loading...</td></tr>";
-
     const { data, error } = await supabase
         .from("listings")
-        .select("id, title, status, posted_by, users(email)");
+        .select(`
+            id,
+            title,
+            status,
+            posted_by,
+            users ( email )
+        `)
+        .order("created_at", { ascending: false });
+
+    const tbody = document.getElementById("admin-listings");
+    tbody.innerHTML = "";
 
     if (error) {
-        console.error(error);
-        tbody.innerHTML = "<tr><td colspan='5'>Error loading</td></tr>";
+        tbody.innerHTML = `<tr><td colspan="5">Error loading listings</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = "";
-
-    data.forEach((l) => {
+    data.forEach(l => {
         const isHidden = l.status === "hidden";
 
         tbody.innerHTML += `
@@ -186,19 +194,24 @@ async function loadListings() {
                 <td>${l.title}</td>
                 <td>${l.users?.email ?? "Unknown"}</td>
                 <td>${l.status}</td>
+
                 <td>
-                    <button class="btn warning small" onclick="toggleListing('${l.id}', '${l.status}')">
+                    <button class="btn warning" onclick="toggleListing('${l.id}', '${l.status}')">
                         ${isHidden ? "Unhide" : "Hide"}
                     </button>
                 </td>
+
                 <td>
-                    <button class="btn danger small" onclick="deleteListing('${l.id}')">Delete</button>
+                    <button class="btn danger" onclick="deleteListing('${l.id}')">
+                        Delete
+                    </button>
                 </td>
             </tr>
         `;
     });
 }
 
+// Hide / Unhide listing
 window.toggleListing = async (id, status) => {
     const newStatus = status === "hidden" ? "active" : "hidden";
 
@@ -208,31 +221,33 @@ window.toggleListing = async (id, status) => {
         .eq("id", id);
 
     if (error) {
-        console.error(error);
-        alert("Error updating listing");
+        alert("Action rejected by RLS");
         return;
     }
 
     loadListings();
 };
 
+// Delete listing
 window.deleteListing = async (id) => {
     if (!confirm("Delete this listing?")) return;
 
-    const { error } = await supabase.from("listings").delete().eq("id", id);
+    const { error } = await supabase
+        .from("listings")
+        .delete()
+        .eq("id", id);
 
     if (error) {
-        console.error(error);
-        alert("Error deleting listing");
+        alert("Delete rejected by RLS");
         return;
     }
 
     loadListings();
 };
 
-/**
- * INIT
- */
+// ===============================
+// INIT
+// ===============================
 (async () => {
     await requireAdminOrManager();
     await loadUsers();
