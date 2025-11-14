@@ -251,6 +251,13 @@ body {
     object-fit: cover;
 }
 
+table select {
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+
 /* ---------------------------
    FORMS
 ---------------------------- */
