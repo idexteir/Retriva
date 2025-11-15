@@ -1,49 +1,21 @@
 // js/listings.js
-
 import { supabase } from "./config.js";
-import { ensureProfile } from "./auth.js";
 
 const grid = document.getElementById("listing-grid");
 const filters = document.querySelectorAll(".filter-btn");
 
-
-// --------------------------------------------------
-// OPTIONAL PROFILE SYNC (non-blocking for visitors)
-// --------------------------------------------------
-(async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (sessionData?.session) {
-        await ensureProfile(sessionData.session.user);
-    }
-})();
-
-
-// --------------------------------------------------
-// INITIAL LOAD
-// --------------------------------------------------
 loadListings("all");
 
 filters.forEach(btn => {
     btn.addEventListener("click", () => {
         filters.forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
-
-        const type = btn.dataset.type;
-        loadListings(type);
+        loadListings(btn.dataset.type);
     });
 });
 
-
-// --------------------------------------------------
-// LOAD LISTINGS (Public + Admin Override)
-// --------------------------------------------------
 async function loadListings(filterType) {
     grid.innerHTML = `<p>Loading...</p>`;
-
-    // Determine viewer
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user || null;
-    const isAdmin = user && user.email === "gomizy.ak@gmail.com"; // permanent override
 
     let query = supabase
         .from("listings")
@@ -55,12 +27,9 @@ async function loadListings(filterType) {
             listing_images ( image_url )
         `);
 
-    // Public users → only active
-    if (!isAdmin) {
-        query = query.eq("status", "active");
-    }
+    // PUBLIC SHOULD SEE ONLY ACTIVE
+    query = query.eq("status", "active");
 
-    // Filter by type
     if (filterType !== "all") {
         query = query.eq("type", filterType);
     }
@@ -69,11 +38,10 @@ async function loadListings(filterType) {
 
     if (error) {
         grid.innerHTML = "<p>Error loading listings.</p>";
-        console.error(error);
         return;
     }
 
-    if (!data || data.length === 0) {
+    if (!data.length) {
         grid.innerHTML = "<p>No listings found.</p>";
         return;
     }
