@@ -4,17 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard • Retriva</title>
+
     <link rel="stylesheet" href="assets/css/style.css" />
+    <link rel="stylesheet" href="assets/css/loading.css" />
 </head>
 
 <body>
 <header id="app-header"></header>
 
 <main class="container">
-    <h2>Your Listings</h2>
+
+    <h1 class="page-title">Your Listings</h1>
 
     <a href="add-listing.html" class="btn primary add-btn">+ Add Listing</a>
-
 
     <table class="table">
         <thead>
@@ -27,11 +29,17 @@
             </tr>
         </thead>
 
-        <tbody id="dashboard-listings"></tbody>
+        <tbody id="dashboard-listings">
+            <tr>
+                <td colspan="5">Loading...</td>
+            </tr>
+        </tbody>
     </table>
+
 </main>
 
 <script type="module" src="js/header.js"></script>
 <script type="module" src="js/dashboard.js"></script>
+
 </body>
 </html>

@@ -1,13 +1,27 @@
-// js/dashboard.js
+// js/dashboard.js — CLEAN, SAFE, WITH BAN + NO FLASH
 import { supabase } from "./config.js";
-import { ensureProfile } from "./auth.js";
+import { ensureProfile, checkBanStatus } from "./auth.js";
 
-// --------------------------------------------------
-// LOAD LISTINGS FOR DASHBOARD
-// --------------------------------------------------
+/* --------------------------------------------------
+   LOADER HELPERS
+-------------------------------------------------- */
+function showLoader() {
+    const el = document.getElementById("loading-overlay");
+    if (el) el.style.display = "flex";
+}
 
-async function loadListings() {
-    // Get session
+function hideLoader() {
+    const el = document.getElementById("loading-overlay");
+    if (el) el.style.display = "none";
+}
+
+/* --------------------------------------------------
+   INIT DASHBOARD
+-------------------------------------------------- */
+async function initDashboard() {
+    showLoader();
+
+    // 1) Check session
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
 
@@ -18,10 +32,22 @@ async function loadListings() {
 
     const user = session.user;
 
-    // Load profile (includes permanent admin logic)
+    // 2) STRONG BAN ENFORCEMENT
+    await checkBanStatus(user.id);
+
+    // 3) Load/update profile (includes permanent admin override)
     const profile = await ensureProfile(user);
 
-    // Fetch user's listings
+    // 4) Load listings
+    await loadListings(profile);
+
+    hideLoader();
+}
+
+/* --------------------------------------------------
+   LOAD USER LISTINGS
+-------------------------------------------------- */
+async function loadListings(profile) {
     const { data, error } = await supabase
         .from("listings")
         .select(`
@@ -31,7 +57,7 @@ async function loadListings() {
             status,
             listing_images ( image_url )
         `)
-        .eq("posted_by", user.id)
+        .eq("posted_by", profile.id)
         .order("created_at", { ascending: false });
 
     const tbody = document.getElementById("dashboard-listings");
@@ -48,21 +74,16 @@ async function loadListings() {
         return;
     }
 
-    // Build table rows
     data.forEach(listing => {
-        const thumb = listing.listing_images?.length
-            ? listing.listing_images[0].image_url
-            : "assets/img/no-image.png";
-
+        const thumb = listing.listing_images?.[0]?.image_url || "assets/img/no-image.png";
         const isHidden = listing.status === "hidden";
 
-        // Default for all users: View (blue) + Delete (red)
         let actionButtons = `
             <a href="listing.html?id=${listing.id}" class="btn small primary">View</a>
             <button class="btn small danger" onclick="deleteListing('${listing.id}')">Delete</button>
         `;
 
-        // Admin + Manager get hide/unhide
+        // Admin + Manager ONLY → Show Hide / Unhide button
         if (profile.role === "admin" || profile.role === "manager") {
             actionButtons = `
                 <a href="listing.html?id=${listing.id}" class="btn small primary">View</a>
@@ -88,58 +109,43 @@ async function loadListings() {
     });
 }
 
-loadListings();
-
-
-// --------------------------------------------------
-// HIDE / UNHIDE LISTING (only admin/manager allowed)
-// --------------------------------------------------
-
+/* --------------------------------------------------
+   HIDE / UNHIDE LISTING — Admin/Manager ONLY
+-------------------------------------------------- */
 window.toggleListingStatus = async (id, currentStatus) => {
     const newStatus = currentStatus === "active" ? "hidden" : "active";
 
-    const ok = confirm(`Are you sure you want to set this listing to "${newStatus}"?`);
-    if (!ok) return;
+    if (!confirm(`Set this listing to "${newStatus}"?`)) return;
 
-    await supabase
-        .from("listings")
-        .update({ status: newStatus })
-        .eq("id", id);
+    await supabase.from("listings").update({ status: newStatus }).eq("id", id);
 
     location.reload();
 };
 
-
-// --------------------------------------------------
-// DELETE LISTING (DB + STORAGE)
-// --------------------------------------------------
-
+/* --------------------------------------------------
+   DELETE LISTING (DB + STORAGE)
+-------------------------------------------------- */
 window.deleteListing = async (id) => {
-    const ok = confirm("Are you sure you want to DELETE this listing permanently?");
-    if (!ok) return;
+    if (!confirm("Are you sure you want to DELETE this listing permanently?")) return;
 
-    // 1) List all storage files for this listing
+    // Delete storage files
     const { data: files } = await supabase.storage
         .from("listing-images")
         .list(id);
 
-    // 2) Delete files
     if (files && files.length > 0) {
         const paths = files.map(f => `${id}/${f.name}`);
         await supabase.storage.from("listing-images").remove(paths);
     }
 
-    // 3) Delete image records
-    await supabase
-        .from("listing_images")
-        .delete()
-        .eq("listing_id", id);
-
-    // 4) Delete listing record
-    await supabase
-        .from("listings")
-        .delete()
-        .eq("id", id);
+    // Delete DB rows
+    await supabase.from("listing_images").delete().eq("listing_id", id);
+    await supabase.from("listings").delete().eq("id", id);
 
     location.reload();
 };
+
+/* --------------------------------------------------
+   EXECUTE DASHBOARD INIT
+-------------------------------------------------- */
+initDashboard();

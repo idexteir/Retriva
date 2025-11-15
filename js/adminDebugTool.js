@@ -23,7 +23,7 @@ export const AdminDebug = {
         console.error(err);
         console.groupEnd();
 
-        // Optional red popup on screen (non-blocking)
+        // Optional on-screen popup
         try {
             const popup = document.createElement("div");
             popup.innerText = `Admin Error: ${title}`;
@@ -36,7 +36,9 @@ export const AdminDebug = {
             popup.style.fontFamily = "monospace";
             popup.style.borderRadius = "8px";
             popup.style.zIndex = "999999";
+            popup.style.pointerEvents = "none";
             document.body.appendChild(popup);
+
             setTimeout(() => popup.remove(), 5000);
         } catch (_) {}
     },
@@ -68,7 +70,7 @@ export const AdminDebug = {
         this.log(`${actionName} → API URL`, url);
         this.log(`${actionName} → API Payload`, requestPayload);
 
-        if (responseData?.error || responseData?.message?.includes("error")) {
+        if (responseData?.error || responseData?.message?.includes?.("error")) {
             this.error(`${actionName} → API ERROR`, responseData);
         } else {
             this.log(`${actionName} → API Response OK`, responseData);

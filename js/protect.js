@@ -1,49 +1,85 @@
-// protect.js — FINAL VERSION WITH BAN ENFORCEMENT
-
+// protect.js — FINAL VERSION WITH STRONG BAN + CLEAN ROUTING
 import { supabase } from "./config.js";
 import { checkBanStatus } from "./auth.js";
 
+// Loader safety (in case header.js hasn't loaded yet)
+function hideLoader() {
+    const overlay = document.getElementById("loading-overlay");
+    if (overlay) overlay.style.display = "none";
+}
+
+/**
+ * Basic login requirement — used in most protected pages.
+ */
 export async function requireLogin() {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session.session) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session) {
         window.location.href = "login.html";
         return;
     }
 
-    // 🔥 Auto logout if banned
-    await checkBanStatus(session.session.user.id);
+    // STRONG BAN ENFORCEMENT
+    await checkBanStatus(session.user.id);
+
+    hideLoader();
 }
 
+/**
+ * Manager or Admin Access
+ */
 export async function requireManager() {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session.session) window.location.href = "login.html";
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
 
-    await checkBanStatus(session.session.user.id); // 🔥 enforce ban
+    if (!session) {
+        window.location.href = "login.html";
+        return;
+    }
 
-    const { data } = await supabase.from("users")
+    await checkBanStatus(session.user.id);
+
+    const { data } = await supabase
+        .from("users")
         .select("role")
-        .eq("id", session.session.user.id)
+        .eq("id", session.user.id)
         .single();
 
     if (data.role !== "manager" && data.role !== "admin") {
         alert("Access denied");
-        window.location.href = "index.html";
+        window.location.href = "/";
+        return;
     }
+
+    hideLoader();
 }
 
+/**
+ * Admin Access Only
+ */
 export async function requireAdmin() {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session.session) window.location.href = "login.html";
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
 
-    await checkBanStatus(session.session.user.id); // 🔥 enforce ban
+    if (!session) {
+        window.location.href = "login.html";
+        return;
+    }
 
-    const { data } = await supabase.from("users")
+    await checkBanStatus(session.user.id);
+
+    const { data } = await supabase
+        .from("users")
         .select("role")
-        .eq("id", session.session.user.id)
+        .eq("id", session.user.id)
         .single();
 
     if (data.role !== "admin") {
         alert("Admin only");
-        window.location.href = "index.html";
+        window.location.href = "/";
+        return;
     }
+
+    hideLoader();
 }

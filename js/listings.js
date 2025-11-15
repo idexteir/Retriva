@@ -1,18 +1,26 @@
-import { ensureProfile } from "./auth.js";
-
-const { data: sessionData } = await supabase.auth.getSession();
-if (sessionData?.session) {
-    await ensureProfile(sessionData.session.user);
-}
-
-
 // js/listings.js
+
 import { supabase } from "./config.js";
+import { ensureProfile } from "./auth.js";
 
 const grid = document.getElementById("listing-grid");
 const filters = document.querySelectorAll(".filter-btn");
 
-// Load all listings on start
+
+// --------------------------------------------------
+// OPTIONAL PROFILE SYNC (non-blocking for visitors)
+// --------------------------------------------------
+(async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData?.session) {
+        await ensureProfile(sessionData.session.user);
+    }
+})();
+
+
+// --------------------------------------------------
+// INITIAL LOAD
+// --------------------------------------------------
 loadListings("all");
 
 filters.forEach(btn => {
@@ -25,8 +33,17 @@ filters.forEach(btn => {
     });
 });
 
+
+// --------------------------------------------------
+// LOAD LISTINGS (Public + Admin Override)
+// --------------------------------------------------
 async function loadListings(filterType) {
     grid.innerHTML = `<p>Loading...</p>`;
+
+    // Determine viewer
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user || null;
+    const isAdmin = user && user.email === "gomizy.ak@gmail.com"; // permanent override
 
     let query = supabase
         .from("listings")
@@ -36,9 +53,14 @@ async function loadListings(filterType) {
             type,
             status,
             listing_images ( image_url )
-        `)
-        .eq("status", "active");
+        `);
 
+    // Public users → only active
+    if (!isAdmin) {
+        query = query.eq("status", "active");
+    }
+
+    // Filter by type
     if (filterType !== "all") {
         query = query.eq("type", filterType);
     }
@@ -51,7 +73,7 @@ async function loadListings(filterType) {
         return;
     }
 
-    if (!data.length) {
+    if (!data || data.length === 0) {
         grid.innerHTML = "<p>No listings found.</p>";
         return;
     }

@@ -1,0 +1,367 @@
+/* ---------------------------
+   GLOBAL
+---------------------------- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #f8f8f8;
+    color: #333;
+}
+
+.container {
+    width: 90%;
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px 0;
+}
+
+/* ---------------------------
+   NAVBAR
+---------------------------- */
+.navbar {
+    background: white;
+    padding: 15px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    border-bottom: 1px solid #eaeaea;
+    position: sticky;
+    top: 0;
+    z-index: 99;
+}
+
+.nav-left a {
+    margin-right: 20px;
+    color: #333;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.nav-left .logo {
+    font-size: 20px;
+    font-weight: bold;
+    color: #1a73e8;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-email {
+    color: #666;
+    font-size: 14px;
+}
+
+/* ---------------------------
+   BUTTONS
+---------------------------- */
+.btn {
+    padding: 10px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: none;
+    font-weight: 600;
+}
+
+.btn.primary {
+    background: #1a73e8;
+    color: white;
+}
+
+.btn.small {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+.btn.google-btn {
+    background: white;
+    border: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    width: 100%;
+    justify-content: center;
+}
+.btn.google-btn img {
+    width: 20px;
+}
+
+.add-btn {
+    display: inline-block;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.btn.warning {
+    background: #ff9800;
+    color: white;
+}
+.btn.warning:hover {
+    background: #e68900;
+}
+
+.btn.danger {
+    background: #e53935;
+    color: white;
+}
+.btn.danger:hover {
+    background: #c62828;
+}
+
+/* ---------------------------
+   PAGE TITLES
+---------------------------- */
+.page-title {
+    font-size: 28px;
+    margin-bottom: 20px;
+}
+
+/* ---------------------------
+   FILTER ROW
+---------------------------- */
+.filter-row {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.filter-btn {
+    background: #fff;
+    padding: 8px 14px;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.filter-btn.active {
+    background: #1a73e8;
+    color: white;
+    border-color: #1a73e8;
+}
+
+/* ---------------------------
+   LISTING GRID
+---------------------------- */
+.listing-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow: hidden;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+}
+
+.card-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    background: #ddd;
+}
+
+.card-body {
+    padding: 12px 15px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.card-type {
+    color: #888;
+    font-size: 14px;
+}
+
+/* ---------------------------
+   LOGIN PAGE
+---------------------------- */
+.centered {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.login-card {
+    background: white;
+    padding: 40px 35px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+    text-align: center;
+    width: 350px;
+}
+
+.logo {
+    font-size: 32px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #1a73e8;
+}
+
+.subtitle {
+    margin-bottom: 30px;
+    color: #666;
+    font-size: 15px;
+}
+
+/* ---------------------------
+   TABLE
+---------------------------- */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.table thead {
+    background: #eaf1fb;
+    color: #1a73e8;
+}
+
+.table th,
+.table td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.thumb {
+    width: 70px;
+    height: 55px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+table select {
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+
+/* ---------------------------
+   FORMS
+---------------------------- */
+.form-card {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    max-width: 600px;
+}
+
+.form-card input,
+.form-card select,
+.form-card textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 6px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* ---------------------------
+   LISTING DETAILS PAGE
+---------------------------- */
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.gallery-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.listing-info {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.description {
+    margin-top: 12px;
+    line-height: 1.6;
+}
+
+/* ---------------------------
+   MOBILE RESPONSIVE
+---------------------------- */
+@media (max-width: 600px) {
+    .navbar {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .listing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .gallery {
+        grid-template-columns: 1fr;
+    }
+
+    .form-card {
+        width: 100%;
+    }
+
+ 
+    .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    
+    .admin-table th {
+        background: #e9f1ff;
+        text-align: left;
+        padding: 10px;
+        font-weight: bold;
+    }
+    
+    .admin-table td {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .admin-table select {
+        padding: 4px;
+    }
+    
+    .container {
+        max-width: 900px;
+        margin: auto;
+    }
+     
+    
+}

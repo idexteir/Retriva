@@ -1,12 +1,29 @@
 // ======================= IMPORTS =======================
 import { supabase } from "./config.js";
-import { ensureProfile } from "./auth.js";
+import { ensureProfile, checkBanStatus } from "./auth.js";
 
 let CURRENT_ROLE = "user";
 let CURRENT_USER_ID = null;
 
-// ======================= ACCESS CHECK =======================
+/* --------------------------------------------------
+   LOADING OVERLAY
+-------------------------------------------------- */
+function showLoader() {
+    const el = document.getElementById("loading-overlay");
+    if (el) el.style.display = "flex";
+}
+
+function hideLoader() {
+    const el = document.getElementById("loading-overlay");
+    if (el) el.style.display = "none";
+}
+
+/* --------------------------------------------------
+   REQUIRE ADMIN OR MANAGER
+-------------------------------------------------- */
 async function requireAdminOrManager() {
+    showLoader();
+
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
 
@@ -17,7 +34,12 @@ async function requireAdminOrManager() {
 
     CURRENT_USER_ID = session.user.id;
 
+    // 🔥 Strong ban enforcement
+    await checkBanStatus(session.user.id);
+
+    // Always load profile (permanent admin override inside)
     const profile = await ensureProfile(session.user);
+
     if (!profile) {
         window.location.href = "login.html";
         return;
@@ -25,14 +47,18 @@ async function requireAdminOrManager() {
 
     CURRENT_ROLE = profile.role;
 
-    if (CURRENT_ROLE === "user") {
+    if (CURRENT_ROLE !== "admin" && CURRENT_ROLE !== "manager") {
         alert("Access denied.");
         window.location.href = "index.html";
         return;
     }
+
+    hideLoader();
 }
 
-// ======================= LOAD USERS =======================
+/* --------------------------------------------------
+   LOAD USERS
+-------------------------------------------------- */
 async function loadUsers() {
     const tbody = document.getElementById("admin-users");
     tbody.innerHTML = "";
@@ -91,40 +117,38 @@ async function loadUsers() {
     });
 }
 
-// ======================= UPDATE ROLE =======================
-
+/* --------------------------------------------------
+   UPDATE ROLE
+-------------------------------------------------- */
 window.updateRole = async (id, newRole) => {
     await supabase.from("users").update({ role: newRole }).eq("id", id);
     loadUsers();
 };
 
-// ======================= BAN USER =======================
-
+/* --------------------------------------------------
+   BAN TOGGLE
+-------------------------------------------------- */
 window.toggleBan = async (id, isBanned) => {
-    // 🔥 PERMANENT BAN FIX — banned_until must be in the future
     const banned_until = isBanned
-        ? new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString() // 100 years
+        ? new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString()
         : null;
 
-    await supabase
-        .from("users")
-        .update({ banned_until })
-        .eq("id", id);
-
+    await supabase.from("users").update({ banned_until }).eq("id", id);
     loadUsers();
 };
 
-// ======================= DELETE USER =======================
-
+/* --------------------------------------------------
+   DELETE USER
+-------------------------------------------------- */
 window.deleteUser = async (id) => {
     if (!confirm("Delete this user permanently?")) return;
-
     await supabase.from("users").delete().eq("id", id);
-
     loadUsers();
 };
 
-// ======================= LOAD LISTINGS =======================
+/* --------------------------------------------------
+   LOAD LISTINGS FOR ADMIN
+-------------------------------------------------- */
 async function loadListings() {
     const tbody = document.getElementById("admin-listings");
     tbody.innerHTML = "";
@@ -151,31 +175,27 @@ async function loadListings() {
     });
 }
 
-// ======================= UPDATE LISTING STATUS =======================
-
+/* --------------------------------------------------
+   UPDATE LISTING STATUS
+-------------------------------------------------- */
 window.toggleListing = async (id, status) => {
     const newStatus = status === "hidden" ? "active" : "hidden";
-
-    await supabase
-        .from("listings")
-        .update({ status: newStatus })
-        .eq("id", id);
-
+    await supabase.from("listings").update({ status: newStatus }).eq("id", id);
     loadListings();
 };
 
-// ======================= DELETE LISTING =======================
-
+/* --------------------------------------------------
+   DELETE LISTING
+-------------------------------------------------- */
 window.deleteListing = async (id) => {
     if (!confirm("Delete listing?")) return;
-
     await supabase.from("listings").delete().eq("id", id);
-
     loadListings();
 };
 
-// ======================= INIT =======================
-
+/* --------------------------------------------------
+   INIT
+-------------------------------------------------- */
 (async () => {
     await requireAdminOrManager();
     await loadUsers();

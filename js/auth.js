@@ -1,5 +1,35 @@
-// auth.js — FINAL VERSION WITH PERMANENT ADMIN OVERRIDE
+// auth.js — FINAL VERSION WITH STRONG BAN + ADMIN OVERRIDE
 import { supabase } from "./config.js";
+
+/**
+ * Strong ban check — runs everywhere after login.
+ * If banned → logout + redirect to home (/)
+ */
+export async function checkBanStatus(userId) {
+    const { data: user, error } = await supabase
+        .from("users")
+        .select("banned_until")
+        .eq("id", userId)
+        .maybeSingle();
+
+    if (error) {
+        console.error("Ban check error:", error);
+        return false;
+    }
+
+    const bannedUntil = user?.banned_until
+        ? new Date(user.banned_until)
+        : null;
+
+    if (bannedUntil && bannedUntil > new Date()) {
+        alert("Your account is banned.");
+        await supabase.auth.signOut();
+        window.location.href = "/";
+        return true; // banned
+    }
+
+    return false; // not banned
+}
 
 /**
  * Ensures the user has a corresponding row in the "users" table.
@@ -18,7 +48,7 @@ export async function ensureProfile(authUser) {
         .eq("id", userId)
         .maybeSingle();
 
-    // If a profile already exists → enforce admin email override
+    // PROFILE EXISTS
     if (profile) {
 
         // PERMANENT ADMIN EMAIL OVERRIDE
@@ -27,14 +57,16 @@ export async function ensureProfile(authUser) {
                 .from("users")
                 .update({ role: "admin" })
                 .eq("id", userId);
-
-            profile.role = "admin"; // update local object
+            profile.role = "admin";
         }
+
+        // STRONG BAN CHECK
+        await checkBanStatus(userId);
 
         return profile;
     }
 
-    // If select error is something else, log it (but continue)
+    // SELECT ERROR (but we continue)
     if (selectError) {
         console.warn("ensureProfile: select error →", selectError);
     }
@@ -53,7 +85,6 @@ export async function ensureProfile(authUser) {
         .select()
         .maybeSingle();
 
-    // If insert succeeded → enforce admin override
     if (insertData) {
 
         if (userEmail === "gomizy.ak@gmail.com") {
@@ -61,14 +92,16 @@ export async function ensureProfile(authUser) {
                 .from("users")
                 .update({ role: "admin" })
                 .eq("id", userId);
-
             insertData.role = "admin";
         }
+
+        // STRONG BAN CHECK
+        await checkBanStatus(userId);
 
         return insertData;
     }
 
-    // If insert failed due to conflict or RLS conflict — try again
+    // INSERT ERROR → retry select
     if (insertError) {
         console.error("ensureProfile: insert error →", insertError);
 
@@ -85,9 +118,11 @@ export async function ensureProfile(authUser) {
                     .from("users")
                     .update({ role: "admin" })
                     .eq("id", userId);
-
                 retryProfile.role = "admin";
             }
+
+            // STRONG BAN CHECK
+            await checkBanStatus(userId);
 
             return retryProfile;
         }
@@ -99,9 +134,9 @@ export async function ensureProfile(authUser) {
 }
 
 /**
- * Logout helper
+ * Logout helper (strong logout → redirect home)
  */
 export async function logout() {
     await supabase.auth.signOut();
-    window.location.href = "login.html";
+    window.location.href = "/";
 }

@@ -1,34 +1,61 @@
+/* ==========================================================
+   RETRIVA • LOADING THEME — Professional & Smooth
+   Matches the new global UI theme
+========================================================== */
+
 /* LOADING OVERLAY */
 .loading-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(255,255,255,0.8);
+    background: rgba(248, 250, 252, 0.85); /* soft background */
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    display: none;
+
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+/* Show overlay (JS toggles this) */
+.loading-overlay.active {
+    opacity: 1;
+    pointer-events: all;
 }
 
 /* SPINNER */
 .spinner {
-    border: 4px solid #eee;
-    border-top: 4px solid #1a73e8;
+    width: 48px;
+    height: 48px;
+
     border-radius: 50%;
-    width: 45px;
-    height: 45px;
-    animation: spin 0.8s linear infinite;
+    border: 4px solid #e2e8f0;          /* theme border */
+    border-top-color: #2563eb;          /* theme primary */
+    animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin {
     100% { transform: rotate(360deg); }
 }
 
-/* SKELETON */
+/* ==========================================================
+   SKELETON LOADING
+========================================================== */
+
 .skeleton {
-    background: linear-gradient(90deg, #eee, #f5f5f5, #eee);
+    background: linear-gradient(
+        90deg,
+        #e2e8f0 0%,
+        #f1f5f9 50%,
+        #e2e8f0 100%
+    );
     background-size: 200% 100%;
-    animation: skeleton 1.2s infinite;
+    animation: skeleton 1.2s ease-in-out infinite;
+    border-radius: 8px;
 }
 
 @keyframes skeleton {

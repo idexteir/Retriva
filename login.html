@@ -2,40 +2,71 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta-name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Login • Retriva</title>
+
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/loading.css">
 </head>
 
 <body class="centered">
+
+<!-- Global Loader -->
+<div id="loading-overlay" class="loading-overlay">
+    <div class="spinner"></div>
+</div>
 
 <div class="login-card">
     <h1 class="logo">Retriva</h1>
     <p class="subtitle">Sign in to continue</p>
 
-    <!-- Google Login Button -->
     <button id="google-btn" class="btn google-btn">
         <img src="assets/img/google.png" /> Continue with Google
     </button>
 </div>
 
-<!-- OAuth Login Script -->
 <script type="module">
 import { supabase } from "./js/config.js";
+import { checkBanStatus } from "./js/auth.js";
 
-// Redirects to post-login.html, which handles:
-// - Creating missing profile
-// - Checking ban status
-// - Redirecting to dashboard
-// - Blocking banned users
+// Loader Helpers
+function showLoader() {
+    document.getElementById("loading-overlay").style.display = "flex";
+}
+function hideLoader() {
+    document.getElementById("loading-overlay").style.display = "none";
+}
+
+// Handle OAuth Login Button
 document.getElementById("google-btn").onclick = async () => {
+    showLoader();
     await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-            redirectTo: window.location.origin + "/Retriva/post-login.html"
+            redirectTo: window.location.origin + "/dashboard.html"
         }
     });
 };
+
+// Auto-Handle OAuth Callback (user returns to login.html with session active)
+(async () => {
+    showLoader();
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+
+    // User already logged in → check ban + redirect
+    if (session) {
+        const isBanned = await checkBanStatus(session.user.id);
+        if (!isBanned) {
+            window.location.href = "dashboard.html";
+        }
+        return; // banned users get auto-logout inside checkBanStatus
+    }
+
+    hideLoader();
+})();
 </script>
 
 </body>
