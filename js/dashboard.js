@@ -2,7 +2,12 @@
 import { supabase } from "./config.js";
 import { ensureProfile } from "./auth.js";
 
+// --------------------------------------------------
+// LOAD LISTINGS FOR DASHBOARD
+// --------------------------------------------------
+
 async function loadListings() {
+    // Get session
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
 
@@ -12,8 +17,11 @@ async function loadListings() {
     }
 
     const user = session.user;
-    await ensureProfile(user);
 
+    // Load profile (includes permanent admin logic)
+    const profile = await ensureProfile(user);
+
+    // Fetch user's listings
     const { data, error } = await supabase
         .from("listings")
         .select(`
@@ -40,6 +48,7 @@ async function loadListings() {
         return;
     }
 
+    // Build table rows
     data.forEach(listing => {
         const thumb = listing.listing_images?.length
             ? listing.listing_images[0].image_url
@@ -47,23 +56,33 @@ async function loadListings() {
 
         const isHidden = listing.status === "hidden";
 
+        // Default for all users: View (blue) + Delete (red)
+        let actionButtons = `
+            <a href="listing.html?id=${listing.id}" class="btn small primary">View</a>
+            <button class="btn small danger" onclick="deleteListing('${listing.id}')">Delete</button>
+        `;
+
+        // Admin + Manager get hide/unhide
+        if (profile.role === "admin" || profile.role === "manager") {
+            actionButtons = `
+                <a href="listing.html?id=${listing.id}" class="btn small primary">View</a>
+
+                <button class="btn small warning"
+                    onclick="toggleListingStatus('${listing.id}', '${listing.status}')">
+                    ${isHidden ? "Unhide" : "Hide"}
+                </button>
+
+                <button class="btn small danger" onclick="deleteListing('${listing.id}')">Delete</button>
+            `;
+        }
+
         tbody.innerHTML += `
             <tr>
                 <td><img src="${thumb}" class="thumb"></td>
                 <td>${listing.title}</td>
                 <td>${listing.type}</td>
                 <td>${listing.status}</td>
-                <td>
-                    <a href="listing.html?id=${listing.id}" class="btn small">View</a>
-
-                    <button class="btn small warning" onclick="toggleListingStatus('${listing.id}', '${listing.status}')">
-                        ${isHidden ? "Unhide" : "Hide"}
-                    </button>
-
-                    <button class="btn small danger" onclick="deleteListing('${listing.id}')">
-                        Delete
-                    </button>
-                </td>
+                <td>${actionButtons}</td>
             </tr>
         `;
     });
@@ -73,7 +92,7 @@ loadListings();
 
 
 // --------------------------------------------------
-// HIDE / UNHIDE LISTING
+// HIDE / UNHIDE LISTING (only admin/manager allowed)
 // --------------------------------------------------
 
 window.toggleListingStatus = async (id, currentStatus) => {
@@ -99,12 +118,12 @@ window.deleteListing = async (id) => {
     const ok = confirm("Are you sure you want to DELETE this listing permanently?");
     if (!ok) return;
 
-    // 1) List all storage files under the listing folder
+    // 1) List all storage files for this listing
     const { data: files } = await supabase.storage
         .from("listing-images")
         .list(id);
 
-    // 2) Remove files in storage
+    // 2) Delete files
     if (files && files.length > 0) {
         const paths = files.map(f => `${id}/${f.name}`);
         await supabase.storage.from("listing-images").remove(paths);
