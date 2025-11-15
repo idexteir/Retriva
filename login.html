@@ -38,13 +38,12 @@ function hideLoader() {
     document.getElementById("loading-overlay").style.display = "none";
 }
 
-// Handle OAuth Login Button
 document.getElementById("google-btn").onclick = async () => {
     showLoader();
     await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-            redirectTo: window.location.origin + "https://idexteir.github.io/Retriva/dashboard.html"
+            redirectTo: "https://idexteir.github.io/Retriva/dashboard.html"
         }
     });
 };
